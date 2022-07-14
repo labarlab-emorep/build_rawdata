@@ -1,15 +1,17 @@
-"""Convert DICOMs to NIfTI files.
+r"""Convert DICOMs to NIfTI files.
 
 BIDs org, deface ...
 
 Example
 -------
-
+python cli.py \
+    --subj-list ER0009 \
+    --raw-dir /mnt/keoki/experiments2/EmoRep/Emorep_BIDS/test
 """
 import os
 import sys
+import glob
 import textwrap
-from pathlib import Path
 from argparse import ArgumentParser, RawTextHelpFormatter
 from dcm_conversion import convert
 
@@ -21,10 +23,7 @@ def get_args():
     )
     parser.add_argument(
         "--source-dir",
-        default=os.path.join(
-            Path(__file__).parents[3],
-            "sourcedata",
-        ),
+        default="/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourecedata",
         help=textwrap.dedent(
             """\
             Path to DICOM parent directory "sourcedata"
@@ -35,7 +34,7 @@ def get_args():
     )
     parser.add_argument(
         "--raw-dir",
-        default=os.path.join(Path(__file__).parents[3], "rawdata"),
+        default="/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/rawdata",
         help=textwrap.dedent(
             """\
             Path to DICOM parent directory "rawdata"
@@ -72,15 +71,14 @@ def main():
     raw_path = args.raw_dir
     subj_list = args.subj_list
 
-    # sess =
-    print(
-        f"""
-        \n Argument test:\n
-            source_path     : {source_path}
-            raw_path        : {raw_path}
-            subj_list       : {subj_list}
-        """
-    )
+    assert len(subj_list) == 1, "Only accepting one subject atm."
+    for subj in subj_list:
+        dcm_list = glob.glob(f"{source_path}/{subj}/*day*/DICOM")
+        for subj_source in dcm_list:
+            sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
+            sess, task = sess_task.split("_")
+            subj_raw = os.path.join(raw_path, f"sub-{subj}/{sess}")
+            convert.dcm2niix(subj_source, subj_raw, subj, sess, task)
 
 
 if __name__ == "__main__":
