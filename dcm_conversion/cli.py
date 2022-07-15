@@ -1,13 +1,22 @@
 r"""Convert DICOMs to NIfTI files.
 
-BIDs org, deface ...
+Converts all DICOMs in a subject's session
+sourcedata DICOM directory into BIDS-formatted
+NIfTI files, output to rawdata.
 
-Example
--------
+Notes
+-----
+Requires EmoRep_BIDS sourcedata organization.
+
+Examples
+--------
+dcm_conversion -s ER0009 ER0010
+
 python cli.py \
-    --subj-list ER0009 \
+    --sub-list ER0009 \
     --raw-dir /mnt/keoki/experiments2/EmoRep/Emorep_BIDS/test
 """
+# %%
 import os
 import sys
 import glob
@@ -23,7 +32,7 @@ def get_args():
     )
     parser.add_argument(
         "--source-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourecedata",
+        default="/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourcedata",
         help=textwrap.dedent(
             """\
             Path to DICOM parent directory "sourcedata"
@@ -43,42 +52,55 @@ def get_args():
         ),
         type=str,
     )
-    parser.add_argument(
+
+    required_args = parser.add_argument_group("Required Arguments")
+    required_args.add_argument(
+        "-s",
         "--sub-list",
-        default=None,
         nargs="+",
         help=textwrap.dedent(
             """\
             List of subject IDs to submit for pre-processing,
-            e.g. "--sub-list EM4414" or "--sub-list EM4414 EM4415 EM4416".
-            (default : %(default)s)
+            e.g. "--sub-list ER4414" or "--sub-list ER4414 ER4415 ER4416".
             """
         ),
         type=str,
+        required=True,
     )
 
-    if len(sys.argv) == 1:
+    if len(sys.argv) <= 1:
         parser.print_help(sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
     return parser
 
 
+# %%
 def main():
-    """Title."""
+    """Coordinate module resources."""
+
+    # Receive arguments
     args = get_args().parse_args()
     source_path = args.source_dir
     raw_path = args.raw_dir
-    subj_list = args.subj_list
+    sub_list = args.sub_list
 
-    assert len(subj_list) == 1, "Only accepting one subject atm."
-    for subj in subj_list:
-        dcm_list = glob.glob(f"{source_path}/{subj}/*day*/DICOM")
+    # Find each subject's DICOMs
+    for subj in sub_list:
+        dcm_list = glob.glob(f"{source_path}/{subj}/day*/DICOM")
+
+        # Determine session, task from path string
         for subj_source in dcm_list:
             sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
             sess, task = sess_task.split("_")
+
+            # Setup subject rawdata, run dcm2niix
             subj_raw = os.path.join(raw_path, f"sub-{subj}/{sess}")
+            if not os.path.exists(subj_raw):
+                os.makedirs(subj_raw)
+            print(f"\nConverting DICOMs for sub-{subj}, {sess} ...")
             convert.dcm2niix(subj_source, subj_raw, subj, sess, task)
+            print("\tDone!")
 
 
 if __name__ == "__main__":
