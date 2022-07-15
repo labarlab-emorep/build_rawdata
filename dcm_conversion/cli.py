@@ -71,35 +71,23 @@ def main():
     """Title."""
 
     # for testing
-    source_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourcedata"
-    raw_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/test"
-    sub_list = ["ER0009"]
+    # source_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourcedata"
+    # raw_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/test"
+    # sub_list = ["ER0009"]
+    # subj = sub_list[0]
 
     args = get_args().parse_args()
     source_path = args.source_dir
     raw_path = args.raw_dir
     sub_list = args.sub_list
-    assert len(sub_list) == 1, "Only accepting one subject atm."
 
     for subj in sub_list:
         dcm_list = glob.glob(f"{source_path}/{subj}/day*/DICOM")
-        print(dcm_list)
         for subj_source in dcm_list:
             sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
             sess, task = sess_task.split("_")
             subj_raw = os.path.join(raw_path, f"sub-{subj}/{sess}")
-            print(
-                f"""\
-                subj : {subj}
-                subj_source : {subj_source}
-                sess : {sess}
-                task : {task}
-                subj_raw : {subj_raw}
-            """
-            )
-            # std_out, std_err = convert.dcm2niix(subj_source, subj_raw, subj, sess, task)
-            # print(std_out)
-            # print(std_err)
+            convert.dcm2niix(subj_source, subj_raw, subj, sess, task)
 
 
 if __name__ == "__main__":
