@@ -98,15 +98,15 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
 
     Returns
     -------
-    t1_list : list
-        Path and name of session T1w files
+    tuple
+        [0] = list of output niis
+        [1] = list of output jsons
 
     Raises
     ------
     FileNotFoundError
         If NIFTI files are not dected in subject rawdata.
         If the number of NIfTI and JSON are != in subject rawdata.
-        If BIDS organized T1w files are not found for the session.
     """
     # Construct and run dcm2niix cmd
     bash_cmd = f"""\
@@ -138,6 +138,74 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
     elif len(nii_list) != len(json_list):
         raise FileNotFoundError("Unbalanced json and nii lists.")
 
+    return (nii_list, json_list)
+    # # Move and rename nii files
+    # print(f"\t Renaming, organizing NIfTIs for sub-{subid}, {sess} ...")
+    # for h_nii, h_json in zip(nii_list, json_list):
+    #     old_name = os.path.basename(h_nii).split("_20")[0]
+    #     if "run" in old_name:
+    #         run = old_name.split("run")[1]
+    #         new_dir, new_name = _switch_name(old_name, subid, sess, task, run)
+    #     else:
+    #         new_dir, new_name = _switch_name(old_name, subid, sess)
+    #     new_path = os.path.join(os.path.dirname(h_nii), new_dir)
+    #     if not os.path.exists(new_path):
+    #         os.makedirs(new_path)
+    #     shutil.move(h_nii, f"{new_path}/{new_name}.nii.gz")
+    #     shutil.move(h_json, f"{new_path}/{new_name}.json")
+
+    # # Make T1w list for return
+    # t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
+    # if not t1_list:
+    #     raise FileNotFoundError("No BIDS-organized T1w files detected.")
+
+    # # Update fmap json with "IntendedFor" field
+    # print(f"\t Updating fmap jsons for sub-{subid}, {sess} ...")
+    # bold_list = [
+    #     x.split(f"sub-{subid}/")[1]
+    #     for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
+    # ]
+    # fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
+    # with open(fmap_json) as jf:
+    #     fmap_dict = json.load(jf)
+    # fmap_dict["IntendedFor"] = bold_list
+    # with open(fmap_json, "w") as jf:
+    #     json.dump(fmap_dict, jf)
+
+    # return t1_list
+
+
+def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
+    """Move data into BIDS organization
+
+    Rename NIfTI files according to BIDs specifications, and
+    update fmap json files with "IntendedFor" field.
+
+    Parameters
+    ----------
+    nii_list : list
+        Paths to nii files output by dcm2niix
+    json_list : list
+        Paths to json files output by dcm2niix
+    subj_raw : Path
+        Subject's rawdata directory
+    subid : str
+        Subject identifier
+    sess : str
+        BIDS-formatted session string
+    task : str
+        BIDS-formatted task string
+
+    Returns
+    -------
+    t1_list : list
+        Path and name of session T1w files
+
+    Raises
+    ------
+    FileNotFoundError
+        If BIDS-organized T1w files are not found for the session.
+    """
     # Move and rename nii files
     print(f"\t Renaming, organizing NIfTIs for sub-{subid}, {sess} ...")
     for h_nii, h_json in zip(nii_list, json_list):

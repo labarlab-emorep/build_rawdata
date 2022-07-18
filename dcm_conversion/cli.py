@@ -114,8 +114,11 @@ def main():
             if not os.path.exists(subj_raw):
                 os.makedirs(subj_raw)
             print(f"\nConverting DICOMs for sub-{subid}, {sess} ...")
-            t1_list = convert.dcm2niix(
+            nii_list, json_list = convert.dcm2niix(
                 subj_source, subj_raw, subid, sess, task
+            )
+            t1_list = convert.bidsify(
+                nii_list, json_list, subj_raw, subid, sess, task
             )
             if do_deface:
                 process.deface(t1_list, deriv_dir, subid, sess)
