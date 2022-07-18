@@ -35,7 +35,7 @@ def _error_msg(msg, stdout, stderr):
 
 
 def _switch_name(old_name, subid, sess, task="", run: str = ""):
-    """Determine EMOREP file types.
+    """Determine EmoRep file types.
 
     Use default filename string output by dcm2niix to
     determine the type and name of NIfTI file.
@@ -139,40 +139,6 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
         raise FileNotFoundError("Unbalanced json and nii lists.")
 
     return (nii_list, json_list)
-    # # Move and rename nii files
-    # print(f"\t Renaming, organizing NIfTIs for sub-{subid}, {sess} ...")
-    # for h_nii, h_json in zip(nii_list, json_list):
-    #     old_name = os.path.basename(h_nii).split("_20")[0]
-    #     if "run" in old_name:
-    #         run = old_name.split("run")[1]
-    #         new_dir, new_name = _switch_name(old_name, subid, sess, task, run)
-    #     else:
-    #         new_dir, new_name = _switch_name(old_name, subid, sess)
-    #     new_path = os.path.join(os.path.dirname(h_nii), new_dir)
-    #     if not os.path.exists(new_path):
-    #         os.makedirs(new_path)
-    #     shutil.move(h_nii, f"{new_path}/{new_name}.nii.gz")
-    #     shutil.move(h_json, f"{new_path}/{new_name}.json")
-
-    # # Make T1w list for return
-    # t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
-    # if not t1_list:
-    #     raise FileNotFoundError("No BIDS-organized T1w files detected.")
-
-    # # Update fmap json with "IntendedFor" field
-    # print(f"\t Updating fmap jsons for sub-{subid}, {sess} ...")
-    # bold_list = [
-    #     x.split(f"sub-{subid}/")[1]
-    #     for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
-    # ]
-    # fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
-    # with open(fmap_json) as jf:
-    #     fmap_dict = json.load(jf)
-    # fmap_dict["IntendedFor"] = bold_list
-    # with open(fmap_json, "w") as jf:
-    #     json.dump(fmap_dict, jf)
-
-    # return t1_list
 
 
 def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
