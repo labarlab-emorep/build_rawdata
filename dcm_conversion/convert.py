@@ -35,7 +35,7 @@ def _error_msg(msg, stdout, stderr):
 
 
 def _switch_name(old_name, subid, sess, task="", run: str = ""):
-    """Determine EMOREP file types.
+    """Determine EmoRep file types.
 
     Use default filename string output by dcm2niix to
     determine the type and name of NIfTI file.
@@ -98,15 +98,15 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
 
     Returns
     -------
-    t1_list : list
-        Path and name of session T1w files
+    tuple
+        [0] = list of output niis
+        [1] = list of output jsons
 
     Raises
     ------
     FileNotFoundError
         If NIFTI files are not dected in subject rawdata.
         If the number of NIfTI and JSON are != in subject rawdata.
-        If BIDS organized T1w files are not found for the session.
     """
     # Construct and run dcm2niix cmd
     bash_cmd = f"""\
@@ -138,6 +138,40 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
     elif len(nii_list) != len(json_list):
         raise FileNotFoundError("Unbalanced json and nii lists.")
 
+    return (nii_list, json_list)
+
+
+def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
+    """Move data into BIDS organization
+
+    Rename NIfTI files according to BIDs specifications, and
+    update fmap json files with "IntendedFor" field.
+
+    Parameters
+    ----------
+    nii_list : list
+        Paths to nii files output by dcm2niix
+    json_list : list
+        Paths to json files output by dcm2niix
+    subj_raw : Path
+        Subject's rawdata directory
+    subid : str
+        Subject identifier
+    sess : str
+        BIDS-formatted session string
+    task : str
+        BIDS-formatted task string
+
+    Returns
+    -------
+    t1_list : list
+        Path and name of session T1w files
+
+    Raises
+    ------
+    FileNotFoundError
+        If BIDS-organized T1w files are not found for the session.
+    """
     # Move and rename nii files
     print(f"\t Renaming, organizing NIfTIs for sub-{subid}, {sess} ...")
     for h_nii, h_json in zip(nii_list, json_list):
