@@ -103,11 +103,41 @@ def main():
     # Find each subject's DICOMs
     for subid in sub_list:
         dcm_list = glob.glob(f"{source_path}/{subid}/day*/DICOM")
+        try:
+            dcm_list[0]
+        except IndexError:
+            print(
+                textwrap.dedent(
+                    f"""
+                No DICOM directory detected for {subid}'s sourcedata,
+                check directory organization.
+                Skipping {subid}...
+                """
+                )
+            )
+            continue
 
         # Determine session, task from path string
         for subj_source in dcm_list:
             sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
-            sess, task = sess_task.split("_")
+            try:
+                sess, task = sess_task.split("_")
+                sess_check = True if len(sess) == 4 else False
+                task_check = (
+                    True if task == "movies" or task == "scenarios" else False
+                )
+                if not sess_check or not task_check:
+                    raise FileNotFoundError
+            except (ValueError, FileNotFoundError):
+                print(
+                    textwrap.dedent(
+                        f"""
+                        Improper session name for {subid}: {sess_task[4:]}
+                        \tSkipping session ...
+                        """
+                    )
+                )
+                continue
 
             # Setup subject rawdata, run dcm2niix
             subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
