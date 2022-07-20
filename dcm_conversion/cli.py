@@ -23,7 +23,79 @@ import sys
 import glob
 import textwrap
 from argparse import ArgumentParser, RawTextHelpFormatter
-from dcm_conversion import convert, process
+from dcm_conversion import convert, process, behavior
+
+
+# %%
+def _split(sess_task, subid):
+    """Title.
+
+    Desc.
+    """
+    try:
+        sess, task = sess_task.split("_")
+        sess_check = True if len(sess) == 8 else False
+        task_check = True if task == "movies" or task == "scenarios" else False
+        if not sess_check or not task_check:
+            raise FileNotFoundError
+        return (sess, task)
+    except (ValueError, FileNotFoundError):
+        print(
+            f"""
+            Improper session name for {subid}: {sess_task[4:]}
+            \tSkipping session ...
+            """
+        )
+        return (None, None)
+
+
+# %%
+def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
+    """Title.
+
+    Desc.
+    """
+    for subj_source in dcm_list:
+        sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
+        sess, task = _split(sess_task, subid)
+        if not sess:
+            continue
+
+        # Setup subject rawdata, run dcm2niix
+        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
+        if not os.path.exists(subj_raw):
+            os.makedirs(subj_raw)
+        print(f"\nConverting DICOMs for sub-{subid}, {sess} ...")
+        nii_list, json_list = convert.dcm2niix(
+            subj_source, subj_raw, subid, sess, task
+        )
+        t1_list = convert.bidsify(
+            nii_list, json_list, subj_raw, subid, sess, task
+        )
+        if do_deface:
+            process.deface(t1_list, deriv_dir, subid, sess)
+        print("\t Done!")
+
+
+# %%
+def _process_beh(beh_list, raw_path, subid):
+    """Title.
+
+    Desc.
+    """
+    # For testing
+    task_file = beh_list[0]
+
+    for task_file in beh_list:
+        sess_task = "ses-day" + task_file.split("day")[1].split("/")[0]
+        sess, task = _split(sess_task, subid)
+        if not sess:
+            continue
+
+        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
+        if not os.path.exists(subj_raw):
+            os.makedirs(subj_raw)
+        behavior.events(task_file, subj_raw, subid, sess, task)
 
 
 def get_args():
@@ -89,6 +161,11 @@ def get_args():
 # %%
 def main():
     """Coordinate module resources."""
+    # For testing
+    sub_list = ["ER0009"]
+    raw_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/test"
+    source_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourcedata"
+    subid = sub_list[0]
 
     # Receive arguments
     args = get_args().parse_args()
@@ -100,9 +177,14 @@ def main():
     # Set derivatives location
     deriv_dir = os.path.join(os.path.dirname(raw_path), "derivatives")
 
-    # Find each subject's DICOMs
+    # Find each subject's source data
     for subid in sub_list:
         dcm_list = glob.glob(f"{source_path}/{subid}/day*/DICOM")
+        beh_list = sorted(
+            glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
+        )
+
+        # TODO add check for beh_list
         try:
             dcm_list[0]
         except IndexError:
@@ -117,42 +199,9 @@ def main():
             )
             continue
 
-        # Determine session, task from path string
-        for subj_source in dcm_list:
-            sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
-            try:
-                sess, task = sess_task.split("_")
-                sess_check = True if len(sess) == 4 else False
-                task_check = (
-                    True if task == "movies" or task == "scenarios" else False
-                )
-                if not sess_check or not task_check:
-                    raise FileNotFoundError
-            except (ValueError, FileNotFoundError):
-                print(
-                    textwrap.dedent(
-                        f"""
-                        Improper session name for {subid}: {sess_task[4:]}
-                        \tSkipping session ...
-                        """
-                    )
-                )
-                continue
-
-            # Setup subject rawdata, run dcm2niix
-            subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
-            if not os.path.exists(subj_raw):
-                os.makedirs(subj_raw)
-            print(f"\nConverting DICOMs for sub-{subid}, {sess} ...")
-            nii_list, json_list = convert.dcm2niix(
-                subj_source, subj_raw, subid, sess, task
-            )
-            t1_list = convert.bidsify(
-                nii_list, json_list, subj_raw, subid, sess, task
-            )
-            if do_deface:
-                process.deface(t1_list, deriv_dir, subid, sess)
-            print("\t Done!")
+        # process mri, beh data
+        _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface)
+        _process_beh(beh_list, raw_path, subid)
 
 
 if __name__ == "__main__":

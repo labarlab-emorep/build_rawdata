@@ -142,7 +142,7 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
 
 
 def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
-    """Move data into BIDS organization
+    """Move data into BIDS organization.
 
     Rename NIfTI files according to BIDs specifications, and
     update fmap json files with "IntendedFor" field.
