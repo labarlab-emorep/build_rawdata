@@ -6,7 +6,6 @@ Requires pydeface.
 """
 import os
 import subprocess
-from pathlib import Path
 
 
 def deface(t1_list, deriv_dir, subid, sess):
