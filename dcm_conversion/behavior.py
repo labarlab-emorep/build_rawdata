@@ -103,7 +103,7 @@ class _EventsData:
         }
 
         # Populate stim_info, accounting for different events
-        if event_name in ["movie", "vigilance", "wash"]:
+        if event_name in ["movie", "scenario", "wash"]:
             event_dict["stim_info"] = self.run_df.loc[
                 idx_onset, "stimdescrip"
             ].tolist()
@@ -209,7 +209,7 @@ def events(task_file, subj_raw, subid, sess, task, run):
         "task-scenarios": {
             "fixS": ["isiOnset", "isiOffset"],
             "fix": ["IsiOnset", "IsiOffset"],
-            "vigilance": ["VigOnset", "VigOffset"],
+            "scenario": ["VigOnset", "VigOffset"],
             "judge": ["JudgeOnset", "JudgeOffset"],
             "replay": ["ReplayOnset", "ReplayOffset"],
             "emotion": ["EmoSelOnset", "EmoSelOffset"],
