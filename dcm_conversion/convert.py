@@ -10,7 +10,6 @@ BIDS file naming is EmoRep specific (_switch_name).
 Assumes T1w exist for each session.
 """
 import os
-import sys
 import glob
 import shutil
 import subprocess
@@ -96,6 +95,10 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
     task : str
         BIDS-formatted task string
 
+    Notes
+    -----
+    Writes dcm2niix-named NIfTI files to subject's rawdata.
+
     Returns
     -------
     tuple
@@ -144,8 +147,8 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
 def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
     """Move data into BIDS organization.
 
-    Rename NIfTI files according to BIDs specifications, and
-    update fmap json files with "IntendedFor" field.
+    Rename/reorganize NIfTI files according to BIDs specifications,
+    and update fmap json files with "IntendedFor" field.
 
     Parameters
     ----------

@@ -28,9 +28,26 @@ from dcm_conversion import convert, process, behavior
 
 # %%
 def _split(sess_task, subid):
-    """Title.
+    """Split string for session and task.
 
-    Desc.
+    Parameters
+    ----------
+    sess_task : str
+        Contains session and task separated by underscore
+    subid : str
+        Subject idenfier
+
+    Raises
+    ------
+    ValueError, FileNotFoundError
+        If errors exist in directory organization or naming
+
+    Returns
+    -------
+    tuple
+        [0] session string, or None
+        [1] task string, or None
+
     """
     try:
         sess, task = sess_task.split("_")
@@ -51,11 +68,25 @@ def _split(sess_task, subid):
 
 # %%
 def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
-    """Title.
+    """Convert DICOMs for subject.
 
-    Desc.
+    Parameters
+    ----------
+    dcm_list : list
+        Paths to sourcedata DICOM directories
+    raw_path : Path
+        Location of subject's rawdata
+    deriv_dir : Path
+        Location of derivatives directory
+    subid : str
+        Subject identifier
+    do_deface : bool
+        Whether to deface T1w files
+
     """
     for subj_source in dcm_list:
+
+        # Setup sess, task strings
         sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
         sess, task = _split(sess_task, subid)
         if not sess:
@@ -65,10 +96,12 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        print(f"\nConverting DICOMs for sub-{subid}, {sess} ...")
+        print(f"\t Converting DICOMs for sub-{subid}, {sess} ...")
         nii_list, json_list = convert.dcm2niix(
             subj_source, subj_raw, subid, sess, task
         )
+
+        # Bidsify data and deface
         t1_list = convert.bidsify(
             nii_list, json_list, subj_raw, subid, sess, task
         )
@@ -79,23 +112,36 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
 
 # %%
 def _process_beh(beh_list, raw_path, subid):
-    """Title.
+    """Make events files for subject.
 
-    Desc.
+    Parameters
+    ----------
+    beh_list : list
+        Paths to task csv files
+    raw_path : Path
+        Location of subject's rawdata directory
+    subid : str
+        Subject identifier
     """
-    # For testing
-    task_file = beh_list[0]
-
     for task_file in beh_list:
+
+        # Setup sess, task, and run strings
+        try:
+            run = "run-0" + task_file.split("run-")[1].split("_")[0]
+        except IndexError:
+            run = "run-0" + task_file.split("run")[1].split("_")[0]
         sess_task = "ses-day" + task_file.split("day")[1].split("/")[0]
-        sess, task = _split(sess_task, subid)
+        sess, h_task = _split(sess_task, subid)
+        task = "task-" + h_task
         if not sess:
             continue
 
-        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
+        # Make func events sidecars
+        print(f"\t Making events file for {task}, {run} ...")
+        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        behavior.events(task_file, subj_raw, subid, sess, task)
+        behavior.events(task_file, subj_raw, subid, sess, task, run)
 
 
 def get_args():
@@ -161,12 +207,6 @@ def get_args():
 # %%
 def main():
     """Coordinate module resources."""
-    # For testing
-    sub_list = ["ER0009"]
-    raw_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/test"
-    source_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourcedata"
-    subid = sub_list[0]
-
     # Receive arguments
     args = get_args().parse_args()
     source_path = args.source_dir
@@ -183,23 +223,23 @@ def main():
         beh_list = sorted(
             glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
         )
-
-        # TODO add check for beh_list
         try:
             dcm_list[0]
+            beh_list[0]
         except IndexError:
             print(
                 textwrap.dedent(
                     f"""
-                No DICOM directory detected for {subid}'s sourcedata,
-                check directory organization.
-                Skipping {subid}...
+                    DICOM directory or behavior.csv file NOT detected
+                    in sourcedata of {subid}. Check directory organization.
+                    Skipping {subid}...
                 """
                 )
             )
             continue
 
         # process mri, beh data
+        print(f"\nProcessing data for {subid} ...")
         _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface)
         _process_beh(beh_list, raw_path, subid)
 
