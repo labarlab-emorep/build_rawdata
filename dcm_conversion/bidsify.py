@@ -1,37 +1,15 @@
-"""Convert DICOMs to NIfTI files.
+"""Title.
 
-Use Chris Rorden's dcm2niix to convert DICOMs to NIfTI files. Also rename
-files and restructure directory organizaton for BIDS compliance.
+Desc.
 
 Notes
 -----
-Assumes flat DICOM organization.
 BIDS file naming is EmoRep specific (_switch_name).
-Assumes T1w exist for each session.
 """
 import os
-import sys
 import glob
 import shutil
-import subprocess
-import textwrap
 import json
-
-
-def _error_msg(msg, stdout, stderr):
-    """Print stdout and stderr."""
-    error_message = f"""
-            {msg}
-
-            stdout
-            ------
-            {stdout}
-
-            stderr
-            ------
-            {stderr}
-        """
-    print(textwrap.dedent(error_message))
 
 
 def _switch_name(old_name, subid, sess, task="", run: str = ""):
@@ -76,76 +54,11 @@ def _switch_name(old_name, subid, sess, task="", run: str = ""):
     return name_dict[old_name]
 
 
-def dcm2niix(subj_source, subj_raw, subid, sess, task):
-    """Conduct dcm2niix.
+def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
+    """Move data into BIDS organization.
 
-    Point dcm2niix at a DICOM directory, rename NIfTI
-    files according to BIDs specifications, and update
-    fmap json files with "IntendedFor" field.
-
-    Parameters
-    ----------
-    subj_source : Path
-        Subject's DICOM directory in sourcedata
-    subj_raw : Path
-        Subject's rawdata directory
-    subid : str
-        Subject identifier
-    sess : str
-        BIDS-formatted session string
-    task : str
-        BIDS-formatted task string
-
-    Returns
-    -------
-    tuple
-        [0] = list of output niis
-        [1] = list of output jsons
-
-    Raises
-    ------
-    FileNotFoundError
-        If NIFTI files are not dected in subject rawdata.
-        If the number of NIfTI and JSON are != in subject rawdata.
-    """
-    # Construct and run dcm2niix cmd
-    bash_cmd = f"""\
-        dcm2niix \
-            -a y \
-            -ba y \
-            -z y \
-            -o {subj_raw} \
-            {subj_source}
-    """
-    h_sp = subprocess.Popen(bash_cmd, shell=True, stdout=subprocess.PIPE)
-    job_out, job_err = h_sp.communicate()
-    h_sp.wait()
-
-    # Clean localizers, make nii/json lists
-    for rm_file in glob.glob(f"{subj_raw}/DICOM_localizer*"):
-        os.remove(rm_file)
-    nii_list = glob.glob(f"{subj_raw}/*.nii.gz")
-    json_list = glob.glob(f"{subj_raw}/*.json")
-
-    # Check that dcm2nix worked
-    if job_out:
-        job_out = job_out.decode("utf-8")
-    if job_err:
-        job_err = job_err.decode("utf-8")
-    if not nii_list:
-        _error_msg("dcm2niix failed!", job_out, job_err)
-        raise FileNotFoundError("No nii files detected.")
-    elif len(nii_list) != len(json_list):
-        raise FileNotFoundError("Unbalanced json and nii lists.")
-
-    return (nii_list, json_list)
-
-
-def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
-    """Move data into BIDS organization
-
-    Rename NIfTI files according to BIDs specifications, and
-    update fmap json files with "IntendedFor" field.
+    Rename/reorganize NIfTI files according to BIDs specifications,
+    and update fmap json files with "IntendedFor" field.
 
     Parameters
     ----------
@@ -205,4 +118,41 @@ def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
     with open(fmap_json, "w") as jf:
         json.dump(fmap_dict, jf)
 
+    # Update func jsons with "TaskName" Field, account for task/rest
+    print(f"\t Updating func jsons for sub-{subid}, {sess} ...")
+    func_json_all = sorted(glob.glob(f"{subj_raw}/func/*_bold.json"))
+    for func_json in func_json_all:
+        h_task = func_json.split("_task-")[1].split("_")[0]
+        with open(func_json) as jf:
+            func_dict = json.load(jf)
+        func_dict["TaskName"] = h_task
+        with open(func_json, "w") as jf:
+            json.dump(func_dict, jf)
+
     return t1_list
+
+
+def bidsify_exp(raw_path):
+    """Create experiment-level BIDS files.
+
+    Write dataset_description.json and README.
+
+    Parameters
+    ----------
+    raw_path : Path
+        Location of parent rawdata directory
+    """
+    # Generate dataset_description file
+    data_desc = {
+        "Name": "EmoRep",
+        "BIDSVersion": "1.7.0",
+        "DatasetType": "raw",
+        "Funding": ["1R01MH113238"],
+        "GeneratedBy": [{"Name": "dcm2niix", "Version": "v1.0.20211006"}],
+    }
+    with open(f"{raw_path}/dataset_description.json", "w") as jf:
+        json.dump(data_desc, jf)
+
+    # Generate README file
+    with open(f"{raw_path}/README", "w") as rf:
+        rf.write("TODO: update")
