@@ -3,13 +3,7 @@
 Written for labaserv2, keoki environment.
 """
 import pytest
-import os
 import nibabel as nib
-
-try:
-    from dcm_conversion import process
-except ImportError:
-    dcm_conversion = None
 
 
 def test_deface(ref_info):

@@ -7,7 +7,6 @@ import pytest
 import os
 import glob
 import shutil
-import nibabel as nib
 
 try:
     from dcm_conversion import convert, process
@@ -61,7 +60,7 @@ def ref_info(local_vars):
         local_vars["sess"],
         local_vars["task"],
     )
-    t1_list = convert.bidsify(
+    t1_list = convert.bidsify_nii(
         nii_list,
         json_list,
         local_vars["test_raw"],

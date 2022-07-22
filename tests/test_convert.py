@@ -6,11 +6,6 @@ import pytest
 import os
 import nibabel as nib
 
-try:
-    from dcm_conversion import convert
-except ImportError:
-    dcm_conversion = None
-
 
 def test_dcm2niix(ref_info):
     # Load ref data
@@ -27,7 +22,7 @@ def test_dcm2niix(ref_info):
     assert (test_data == ref_data).all()
 
 
-def test_bidsify(ref_info):
+def test_bidsify_nii(ref_info):
     # Test naming
     ref_name = os.path.basename(ref_info["ref_t1w"])
     test_name = os.path.basename(ref_info["test_t1w"])

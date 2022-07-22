@@ -144,7 +144,7 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
     return (nii_list, json_list)
 
 
-def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
+def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
     """Move data into BIDS organization.
 
     Rename/reorganize NIfTI files according to BIDs specifications,
@@ -208,4 +208,36 @@ def bidsify(nii_list, json_list, subj_raw, subid, sess, task):
     with open(fmap_json, "w") as jf:
         json.dump(fmap_dict, jf)
 
+    # Update func jsons with "TaskName" Field, account for task/rest
+    print(f"\t Updating func jsons for sub-{subid}, {sess} ...")
+    func_json_all = sorted(glob.glob(f"{subj_raw}/func/*_bold.json"))
+    for func_json in func_json_all:
+        h_task = func_json.split("_task-")[1].split("_")[0]
+        with open(func_json) as jf:
+            func_dict = json.load(jf)
+        func_dict["TaskName"] = h_task
+        with open(func_json, "w") as jf:
+            json.dump(func_dict, jf)
+
     return t1_list
+
+
+def bidsify_exp(raw_path):
+    """Title.
+
+    Desc.
+    """
+    # Generate dataset_description file
+    data_desc = {
+        "Name": "EmoRep",
+        "BIDSVersion": "1.7.0",
+        "DatasetType": "raw",
+        "Funding": ["1R01MH113238"],
+        "GeneratedBy": [{"Name": "dcm2niix", "Version": "v1.0.20211006"}],
+    }
+    with open(f"{raw_path}/dataset_description.json", "w") as jf:
+        json.dump(data_desc, jf)
+
+    # Generate README file
+    with open(f"{raw_path}/README", "w") as rf:
+        rf.write("TODO: update")
