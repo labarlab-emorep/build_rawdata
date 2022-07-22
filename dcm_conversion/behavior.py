@@ -1,6 +1,7 @@
 """Generate events files.
 
-Construct BIDS events sidecar for func data.
+Construct BIDS events sidecar and json files
+for fMRI data.
 """
 import os
 import json
@@ -179,6 +180,8 @@ def events(task_file, subj_raw, subid, sess, task, run):
 
     Determine event names and on/offset strings for each task,
     build the events file, then write it to appropriate location.
+    Finally, generate events.json files, supplying custom events
+    columns and trial_type/stim_info values.
 
     Parameters
     ----------
