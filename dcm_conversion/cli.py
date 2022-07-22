@@ -102,7 +102,7 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         )
 
         # Bidsify data and deface
-        t1_list = convert.bidsify(
+        t1_list = convert.bidsify_nii(
             nii_list, json_list, subj_raw, subid, sess, task
         )
         if do_deface:
@@ -214,8 +214,12 @@ def main():
     sub_list = args.sub_list
     do_deface = args.deface
 
-    # Set derivatives location
+    # Set derivatives location, write project BIDS files
     deriv_dir = os.path.join(os.path.dirname(raw_path), "derivatives")
+    for h_dir in [deriv_dir, raw_path]:
+        if not os.path.exists(h_dir):
+            os.makedirs(h_dir)
+    convert.bidsify_exp(raw_path)
 
     # Find each subject's source data
     for subid in sub_list:

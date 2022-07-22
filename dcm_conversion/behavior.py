@@ -3,6 +3,7 @@
 Construct BIDS events sidecar for func data.
 """
 import os
+import json
 import pandas as pd
 import numpy as np
 
@@ -194,7 +195,7 @@ def events(task_file, subj_raw, subid, sess, task, run):
     run : str
         BIDS run
     """
-
+    # Setup task-specific trial_type and on/off values
     exp_types = {
         "task-movies": {
             "fixS": ["isiOnset", "isiOffset"],
@@ -218,14 +219,76 @@ def events(task_file, subj_raw, subid, sess, task, run):
         },
     }
 
+    # Determine relevant trial types, build events file
     trial_types = exp_types[task]
     events_info = _EventsData(task_file)
     for h_name, on_off in trial_types.items():
         events_info.get_info(h_name, on_off[0], on_off[1])
 
+    # Write out events file
     out_file = os.path.join(
         subj_raw,
         f"sub-{subid}_{sess}_{task}_{run}_events.tsv",
     )
     events_info.events_df.to_csv(out_file, sep="\t", index=False, na_rep="NaN")
     del events_info
+
+    # Prepare task info for events json
+    event_dict = {
+        "trial_type": {
+            "LongName": f"Emotion Task with {task.split('-')[1]}",
+            "Description": "Indicator of stimulus or reponse type",
+            "Levels": {
+                "fixS": "Start, end fixations",
+                "fix": "Fixation cross",
+                "judge": "Indoor, outdoor judgment",
+                "replay": "Mentally replay stimulus",
+                "emotion": "Decide which emotion describes the stimulus",
+                "intensity": "Decide emotional intensity level of stimulus",
+                "wash": "A colored masking image",
+            },
+        },
+        "stim_info": {
+            "LongName": "Short description of stimulus",
+            "Description": "Indicator of screen prompt or stimulus presented",
+            "Levels": {
+                "fixation_cross": "Fixation Cross",
+                "prompt_replay": "Prompt to replay stimulus",
+                "prompt_in_out": "Prompt to make indoor, outdoor judgment",
+                "select_emotion": "Prompt to select emotion from list",
+                "select_intensity": "Prompt to specify emotion intensity",
+                "file name": "File used in stimulus generation",
+            },
+        },
+        "response": {
+            "LongName": "Response made by participant",
+            "Description": "Captured response of participant",
+            "Levels": {
+                "numeric": "Indoor/outdoor judgment or intensity rating",
+                "alpha": "Emotion selected from list",
+            },
+        },
+        "accuracy": {
+            "LongName": "Accuracy of participant response",
+            "Description": "Whether response was correct",
+            "Levels": {
+                "correct": "Response was correct",
+                "wrong": "Response was incorrect",
+            },
+        },
+    }
+
+    # Add task-specific trial_types
+    if task == "task-movies":
+        event_dict["trial_type"]["Levels"][
+            "movie"
+        ] = "Movie clip of emotional event"
+    elif task == "task-scenarios":
+        event_dict["trial_type"]["Levels"][
+            "scenario"
+        ] = "Vignette of emotional event"
+
+    # Write event json file
+    event_json = f"{subj_raw}/sub-{subid}_{sess}_{task}_{run}_events.json"
+    with open(event_json, "w") as jf:
+        json.dump(event_dict, jf)
