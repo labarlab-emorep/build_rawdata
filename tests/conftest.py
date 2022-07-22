@@ -9,7 +9,7 @@ import glob
 import shutil
 
 try:
-    from dcm_conversion import convert, process
+    from dcm_conversion import process, bidsify
 except ImportError:
     dcm_conversion = None
 
@@ -53,14 +53,14 @@ def local_vars():
 @pytest.fixture(scope="session")
 def ref_info(local_vars):
     # Execute convert methods, get outputs
-    nii_list, json_list = convert.dcm2niix(
+    nii_list, json_list = process.dcm2niix(
         local_vars["subj_source"],
         local_vars["test_raw"],
         local_vars["subid"],
         local_vars["sess"],
         local_vars["task"],
     )
-    t1_list = convert.bidsify_nii(
+    t1_list = bidsify.bidsify_nii(
         nii_list,
         json_list,
         local_vars["test_raw"],

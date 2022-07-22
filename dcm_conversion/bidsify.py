@@ -1,36 +1,15 @@
-"""Convert DICOMs to NIfTI files.
+"""Title.
 
-Use Chris Rorden's dcm2niix to convert DICOMs to NIfTI files. Also rename
-files and restructure directory organizaton for BIDS compliance.
+Desc.
 
 Notes
 -----
-Assumes flat DICOM organization.
 BIDS file naming is EmoRep specific (_switch_name).
-Assumes T1w exist for each session.
 """
 import os
 import glob
 import shutil
-import subprocess
-import textwrap
 import json
-
-
-def _error_msg(msg, stdout, stderr):
-    """Print stdout and stderr."""
-    error_message = f"""
-            {msg}
-
-            stdout
-            ------
-            {stdout}
-
-            stderr
-            ------
-            {stderr}
-        """
-    print(textwrap.dedent(error_message))
 
 
 def _switch_name(old_name, subid, sess, task="", run: str = ""):
@@ -73,75 +52,6 @@ def _switch_name(old_name, subid, sess, task="", run: str = ""):
         "DICOM_Field_Map_P_A": ("fmap", f"{base_str}_acq-rpe_dir-PA_epi"),
     }
     return name_dict[old_name]
-
-
-def dcm2niix(subj_source, subj_raw, subid, sess, task):
-    """Conduct dcm2niix.
-
-    Point dcm2niix at a DICOM directory, rename NIfTI
-    files according to BIDs specifications, and update
-    fmap json files with "IntendedFor" field.
-
-    Parameters
-    ----------
-    subj_source : Path
-        Subject's DICOM directory in sourcedata
-    subj_raw : Path
-        Subject's rawdata directory
-    subid : str
-        Subject identifier
-    sess : str
-        BIDS-formatted session string
-    task : str
-        BIDS-formatted task string
-
-    Notes
-    -----
-    Writes dcm2niix-named NIfTI files to subject's rawdata.
-
-    Returns
-    -------
-    tuple
-        [0] = list of output niis
-        [1] = list of output jsons
-
-    Raises
-    ------
-    FileNotFoundError
-        If NIFTI files are not dected in subject rawdata.
-        If the number of NIfTI and JSON are != in subject rawdata.
-    """
-    # Construct and run dcm2niix cmd
-    bash_cmd = f"""\
-        dcm2niix \
-            -a y \
-            -ba y \
-            -z y \
-            -o {subj_raw} \
-            {subj_source}
-    """
-    h_sp = subprocess.Popen(bash_cmd, shell=True, stdout=subprocess.PIPE)
-    job_out, job_err = h_sp.communicate()
-    h_sp.wait()
-
-    # Clean localizers, make nii/json lists
-    for rm_file in glob.glob(f"{subj_raw}/DICOM_localizer*"):
-        os.remove(rm_file)
-    nii_list = glob.glob(f"{subj_raw}/*.nii.gz")
-    json_list = glob.glob(f"{subj_raw}/*.json")
-
-    # Check that dcm2nix worked
-    if job_out:
-        job_out = job_out.decode("utf-8")
-    if job_err:
-        job_err = job_err.decode("utf-8")
-    if not nii_list:
-        _error_msg("dcm2niix failed!", job_out, job_err)
-        raise FileNotFoundError("No nii files detected.")
-    elif len(nii_list) != len(json_list):
-        raise FileNotFoundError("Unbalanced json and nii lists.")
-
-    return (nii_list, json_list)
 
 
 def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
@@ -223,9 +133,14 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
 
 
 def bidsify_exp(raw_path):
-    """Title.
+    """Create experiment-level BIDS files.
 
-    Desc.
+    Write dataset_description.json and README.
+
+    Parameters
+    ----------
+    raw_path : Path
+        Location of parent rawdata directory
     """
     # Generate dataset_description file
     data_desc = {

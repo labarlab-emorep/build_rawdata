@@ -23,7 +23,7 @@ import sys
 import glob
 import textwrap
 from argparse import ArgumentParser, RawTextHelpFormatter
-from dcm_conversion import convert, process, behavior
+from dcm_conversion import process, bidsify, behavior
 
 
 # %%
@@ -97,12 +97,12 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
         print(f"\t Converting DICOMs for sub-{subid}, {sess} ...")
-        nii_list, json_list = convert.dcm2niix(
+        nii_list, json_list = process.dcm2niix(
             subj_source, subj_raw, subid, sess, task
         )
 
         # Bidsify data and deface
-        t1_list = convert.bidsify_nii(
+        t1_list = bidsify.bidsify_nii(
             nii_list, json_list, subj_raw, subid, sess, task
         )
         if do_deface:
@@ -219,7 +219,7 @@ def main():
     for h_dir in [deriv_dir, raw_path]:
         if not os.path.exists(h_dir):
             os.makedirs(h_dir)
-    convert.bidsify_exp(raw_path)
+    bidsify.bidsify_exp(raw_path)
 
     # Find each subject's source data
     for subid in sub_list:
