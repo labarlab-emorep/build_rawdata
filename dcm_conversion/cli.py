@@ -96,7 +96,7 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         # Check for data
         try:
             os.listdir(subj_source)[0]
-        except FileNotFoundError:
+        except IndexError:
             f"No DICOMs detected for sub-{subid}, {sess}. Skipping."
             continue
 
