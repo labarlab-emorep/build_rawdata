@@ -92,19 +92,30 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         if not sess:
             continue
 
+        # Check for data
+        try:
+            os.listdir(subj_source)[0]
+        except FileNotFoundError:
+            f"No DICOMs detected for sub-{subid}, {sess}. Skipping."
+            continue
+
         # Setup subject rawdata, run dcm2niix
         subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        print(f"\t Converting DICOMs for sub-{subid}, {sess} ...")
-        nii_list, json_list = process.dcm2niix(
-            subj_source, subj_raw, subid, sess, task
-        )
 
-        # Bidsify data and deface
-        t1_list = bidsify.bidsify_nii(
-            nii_list, json_list, subj_raw, subid, sess, task
-        )
+        # Check for existing niis, run dcm2niix, bidsify
+        print(f"\t Converting DICOMs for sub-{subid}, {sess} ...")
+        t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
+        if not t1_list:
+            nii_list, json_list = process.dcm2niix(
+                subj_source, subj_raw, subid, sess, task
+            )
+            t1_list = bidsify.bidsify_nii(
+                nii_list, json_list, subj_raw, subid, sess, task
+            )
+
+        # Run defacing
         if do_deface:
             process.deface(t1_list, deriv_dir, subid, sess)
         print("\t Done!")
