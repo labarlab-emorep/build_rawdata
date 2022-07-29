@@ -22,6 +22,7 @@ import os
 import sys
 import glob
 import textwrap
+import shutil
 from argparse import ArgumentParser, RawTextHelpFormatter
 from dcm_conversion import process, bidsify, behavior
 
@@ -95,7 +96,7 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         # Check for data
         try:
             os.listdir(subj_source)[0]
-        except FileNotFoundError:
+        except IndexError:
             f"No DICOMs detected for sub-{subid}, {sess}. Skipping."
             continue
 
@@ -155,6 +156,45 @@ def _process_beh(beh_list, raw_path, subid):
         behavior.events(task_file, subj_raw, subid, sess, task, run)
 
 
+# %%
+def _process_phys(phys_list, raw_path, subid):
+    """Title.
+
+    Desc.
+    """
+    print("\t Copying physio files ...")
+    for phys_file in phys_list:
+
+        # Get session, task strings
+        sess_task = "ses-day" + phys_file.split("day")[1].split("/")[0]
+        sess, h_task = _split(sess_task, subid)
+        task = "task-" + h_task
+        if not sess:
+            continue
+
+        # Get run, deal with resting task
+        if "run" in phys_file:
+            run = "run-0" + phys_file.split("_run")[1].split(".")[0]
+        else:
+            run = "run-01"
+            task = "task-rest"
+
+        # Setup output dir/name
+        subj_phys = os.path.join(raw_path, f"sub-{subid}/{sess}/phys")
+        if not os.path.exists(subj_phys):
+            os.makedirs(subj_phys)
+        dest_orig = os.path.join(subj_phys, os.path.basename(phys_file))
+        dest_new = os.path.join(
+            subj_phys,
+            f"sub-{subid}_{sess}_{task}_{run}_recording-biopack_physio.acq",
+        )
+
+        # Copy, rename
+        shutil.copy(phys_file, dest_orig)
+        os.rename(dest_orig, dest_new)
+
+
+# %%
 def get_args():
     """Get and parse arguments."""
     parser = ArgumentParser(
@@ -238,15 +278,21 @@ def main():
         beh_list = sorted(
             glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
         )
+        phys_list = sorted(
+            glob.glob(f"{source_path}/{subid}/day*/Scanner_physio/*acq")
+        )
         try:
             dcm_list[0]
             beh_list[0]
+            phys_list[0]
         except IndexError:
             print(
                 textwrap.dedent(
                     f"""
-                    DICOM directory or behavior.csv file NOT detected
-                    in sourcedata of {subid}. Check directory organization.
+                    DICOM directory, behavior.csv, or physio.acq file NOT
+                    detected in sourcedata of {subid}. Check directory
+                    organization.
+
                     Skipping {subid}...
                 """
                 )
@@ -257,6 +303,7 @@ def main():
         print(f"\nProcessing data for {subid} ...")
         _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface)
         _process_beh(beh_list, raw_path, subid)
+        _process_phys(phys_list, raw_path, subid)
 
 
 if __name__ == "__main__":
