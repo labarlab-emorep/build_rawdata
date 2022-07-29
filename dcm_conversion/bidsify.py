@@ -156,3 +156,7 @@ def bidsify_exp(raw_path):
     # Generate README file
     with open(f"{raw_path}/README", "w") as rf:
         rf.write("TODO: update")
+
+    # Add ignore file for physio data
+    with open(f"{raw_path}/.bidsignore", "w") as igf:
+        igf.write("**/*.acq")

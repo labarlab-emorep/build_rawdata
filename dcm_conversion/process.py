@@ -144,6 +144,10 @@ def deface(t1_list, deriv_dir, subid, sess):
             subj_deriv, t1_file.replace("T1w.nii.gz", "T1w_defaced.nii.gz")
         )
 
+        # Avoid repeating work
+        if os.path.exists(t1_deface):
+            continue
+
         # Write, submit defacing
         bash_cmd = f"""\
             pydeface {t1_path} --outfile {t1_deface}
