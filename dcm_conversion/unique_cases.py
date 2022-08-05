@@ -1,10 +1,34 @@
-"""Title."""
+"""Methods for resolving data issues.
+
+Inevitably some participants will have idiosyncratic data,
+or a protocol will change, resulting in special cases that
+need to be treated specially by the package.
+"""
 
 
 def wash_issue(trial_types, task, subid):
-    """Title.
+    """Update wash trial endtime field.
 
-    Desc.
+    The WashStimOffset was incorrectly set for the
+    first number of participants. This patch yields
+    correct wash durations by changing the offset
+    field for wash.
+
+    Parameters
+    ----------
+    trial_types : dict
+        Task trial types, onset, and offset fields
+        produced by behavior.events.
+    task : str
+        BIDS task string
+    subid : str
+        Subject identifier
+
+    Returns
+    -------
+    trial_types : dict
+        Updated wash values if subid is found in the issue_list,
+        otherwise returns the same trial_types as wash_issue received.
     """
 
     issue_list = [
