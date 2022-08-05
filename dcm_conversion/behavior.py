@@ -7,6 +7,7 @@ import os
 import json
 import pandas as pd
 import numpy as np
+from dcm_conversion import unique_cases
 
 
 # %%
@@ -222,8 +223,13 @@ def events(task_file, subj_raw, subid, sess, task, run):
         },
     }
 
-    # Determine relevant trial types, build events file
+    # Determine relevant trial types
     trial_types = exp_types[task]
+
+    # Account for unique cases
+    trial_types = unique_cases.wash_issue(trial_types, task, subid)
+
+    # Generate events files
     events_info = _EventsData(task_file)
     for h_name, on_off in trial_types.items():
         events_info.get_info(h_name, on_off[0], on_off[1])
