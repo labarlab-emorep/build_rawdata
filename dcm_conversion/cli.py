@@ -97,7 +97,7 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         try:
             os.listdir(subj_source)[0]
         except IndexError:
-            f"No DICOMs detected for sub-{subid}, {sess}. Skipping."
+            print(f"No DICOMs detected for sub-{subid}, {sess}. Skipping.")
             continue
 
         # Setup subject rawdata, run dcm2niix
