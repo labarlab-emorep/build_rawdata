@@ -105,19 +105,19 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
 
     # Update fmap json with "IntendedFor" field
     print(f"\t Updating fmap jsons for sub-{subid}, {sess} ...")
-    bold_list = [
-        x.split(f"sub-{subid}/")[1]
-        for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
-    ]
     try:
+        bold_list = [
+            x.split(f"sub-{subid}/")[1]
+            for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
+        ]
         fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
+        with open(fmap_json) as jf:
+            fmap_dict = json.load(jf)
+        fmap_dict["IntendedFor"] = bold_list
+        with open(fmap_json, "w") as jf:
+            json.dump(fmap_dict, jf)
     except IndexError:
-        f"\t\t No fmaps detected for sub-{subid}, skipping."
-    with open(fmap_json) as jf:
-        fmap_dict = json.load(jf)
-    fmap_dict["IntendedFor"] = bold_list
-    with open(fmap_json, "w") as jf:
-        json.dump(fmap_dict, jf)
+        print(f"\t\t No fmaps detected for sub-{subid}, skipping.")
 
     # Update func jsons with "TaskName" Field, account for task/rest
     print(f"\t Updating func jsons for sub-{subid}, {sess} ...")
