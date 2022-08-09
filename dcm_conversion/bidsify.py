@@ -1,6 +1,4 @@
-"""Title.
-
-Desc.
+"""Methods for making data BIDS compliant.
 
 Notes
 -----
@@ -111,7 +109,10 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
         x.split(f"sub-{subid}/")[1]
         for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
     ]
-    fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
+    try:
+        fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
+    except IndexError:
+        f"\t\t No fmaps detected for sub-{subid}, skipping."
     with open(fmap_json) as jf:
         fmap_dict = json.load(jf)
     fmap_dict["IntendedFor"] = bold_list
