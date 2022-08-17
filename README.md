@@ -1,4 +1,6 @@
-# emorep-dcm_conversion
+# dcm_conversion
+
+This in-house python package is written for the EmoRep project, intended to be executed via command line on the labarserv2 computer.
 
 ## Functionality
 - Convert DICOMs to NIfTI format
@@ -8,8 +10,9 @@
 - Copy physio data to rawdata
 
 ## Usage
-- Install to local python environment `$ python setup.py install --record record.txt`
-- Trigger from command line via entrypoint `$ dcm_conversion` for help and usage
+- Install to local python environment `$ python setup.py install --record record.txt` 
+    - (should already be done)
+- Trigger package help and usage via entrypoint `$ dcm_conversion`
 
 ## Documentation
 _TODO: take readthedocs live_
