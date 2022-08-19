@@ -240,7 +240,7 @@ def events(task_file, subj_raw, subid, sess, task, run):
     trial_types = exp_types[task]
 
     # Account for unique cases
-    trial_types = unique_cases.wash_issue(trial_types, task, subid)
+    trial_types = unique_cases.wash_issue(trial_types, task, sess, subid)
 
     # Generate events files
     events_info = _EventsData(task_file)

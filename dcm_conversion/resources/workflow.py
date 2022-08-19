@@ -195,6 +195,7 @@ def _process_phys(phys_list, raw_path, subid):
         os.rename(dest_orig, dest_new)
 
 
+# %%
 def dcm_worflow(
     subid, dcm_list, raw_path, deriv_dir, do_deface, beh_list, phys_list
 ):
