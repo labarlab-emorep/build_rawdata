@@ -35,6 +35,7 @@ def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
     tuple
         [0] = scan type (anat, func, fmap)
         [1] = BIDS-formatted file name, sans extension
+
     """
     # Start BIDS file name string
     base_str = f"sub-{subid}_{sess}"
@@ -68,7 +69,7 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
         Paths to nii files output by dcm2niix
     json_list : list
         Paths to json files output by dcm2niix
-    subj_raw : Path
+    subj_raw : path
         Subject's rawdata directory
     subid : str
         Subject identifier
@@ -86,6 +87,7 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
     ------
     FileNotFoundError
         If BIDS-organized T1w files are not found for the session.
+
     """
     print(f"\t Renaming, organizing NIfTIs for sub-{subid}, {sess} ...")
 
@@ -162,12 +164,17 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
 def bidsify_exp(raw_path):
     """Create experiment-level BIDS files.
 
-    Write dataset_description.json and README.
+    Write dataset_description.json, README, and .bidsignore.
 
     Parameters
     ----------
-    raw_path : Path
+    raw_path : path
         Location of parent rawdata directory
+
+    Returns
+    -------
+    None
+
     """
     # Generate dataset_description file
     data_desc = {
