@@ -41,9 +41,9 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
 
     Parameters
     ----------
-    subj_source : Path
+    subj_source : path
         Subject's DICOM directory in sourcedata
-    subj_raw : Path
+    subj_raw : path
         Subject's rawdata directory
     subid : str
         Subject identifier
@@ -67,6 +67,7 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
     FileNotFoundError
         If NIFTI files are not dected in subject rawdata.
         If the number of NIfTI and JSON are != in subject rawdata.
+
     """
     # Construct and run dcm2niix cmd
     bash_cmd = f"""\
@@ -84,8 +85,8 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
     # Clean localizers, make nii/json lists
     for rm_file in glob.glob(f"{subj_raw}/DICOM_localizer*"):
         os.remove(rm_file)
-    nii_list = glob.glob(f"{subj_raw}/*.nii.gz")
-    json_list = glob.glob(f"{subj_raw}/*.json")
+    nii_list = sorted(glob.glob(f"{subj_raw}/*.nii.gz"))
+    json_list = sorted(glob.glob(f"{subj_raw}/*.json"))
 
     # Check that dcm2nix worked
     if job_out:
@@ -110,7 +111,7 @@ def deface(t1_list, deriv_dir, subid, sess):
     ----------
     t1_list : list
         Paths to subject T1w niis in rawdata
-    deriv_dir : Path
+    deriv_dir : path
         Location of project derivatives directory
     subid : str
         Subject identifier
