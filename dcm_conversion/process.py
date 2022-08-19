@@ -84,8 +84,8 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
     # Clean localizers, make nii/json lists
     for rm_file in glob.glob(f"{subj_raw}/DICOM_localizer*"):
         os.remove(rm_file)
-    nii_list = glob.glob(f"{subj_raw}/*.nii.gz")
-    json_list = glob.glob(f"{subj_raw}/*.json")
+    nii_list = sorted(glob.glob(f"{subj_raw}/*.nii.gz"))
+    json_list = sorted(glob.glob(f"{subj_raw}/*.json"))
 
     # Check that dcm2nix worked
     if job_out:
