@@ -7,7 +7,7 @@ import os
 import json
 import pandas as pd
 import numpy as np
-from dcm_conversion import unique_cases
+from dcm_conversion.resources import unique_cases
 
 
 # %%
@@ -18,6 +18,14 @@ class _EventsData:
     BIDS events sidecars for func data.
 
     Written for EmoRep movies and scenarious tasks.
+
+    Parameters
+    ----------
+    task_file : path
+        Location of task csv file for run
+    resp_na : str
+        Not applicable indecator
+        (default : "n/a")
 
     Attributes
     ----------
@@ -38,11 +46,12 @@ class _EventsData:
 
         Parameters
         ----------
-        task_file : Path
+        task_file : path
             Location of task csv file for run
         resp_na : str
             Not applicable indecator
             (default : "n/a")
+
         """
         self.run_df = pd.read_csv(task_file, na_values=["None", "none"])
         self.resp_na = resp_na
@@ -55,7 +64,6 @@ class _EventsData:
             "response_time",
             "accuracy",
         ]
-
         self.events_df = pd.DataFrame(columns=self.events_cols)
 
     def get_info(self, event_name, event_on, event_off):
@@ -186,9 +194,9 @@ def events(task_file, subj_raw, subid, sess, task, run):
 
     Parameters
     ----------
-    task_file : Path
+    task_file : path
         Location of task run file
-    subj_raw : Path
+    subj_raw : path
         Location of subject's rawdata directory
     subid : str
         Subject identifier
@@ -198,6 +206,11 @@ def events(task_file, subj_raw, subid, sess, task, run):
         BIDS task
     run : str
         BIDS run
+
+    Returns
+    -------
+    None
+
     """
     # Setup task-specific trial_type and on/off values
     exp_types = {

@@ -10,7 +10,7 @@ import shutil
 import json
 
 
-def _switch_name(old_name, subid, sess, task="", run: str = ""):
+def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
     """Determine EmoRep file types.
 
     Use default filename string output by dcm2niix to
@@ -18,7 +18,7 @@ def _switch_name(old_name, subid, sess, task="", run: str = ""):
 
     Parameters
     ----------
-    old_name : str
+    dcm2niix_name : str
         Split dcm2niix name, preceding year date
         e.g. DICOM_EmoRep_anat for DICOM_EmoRep_anat_20220101_foo.nii.gz
     subid : str
@@ -35,8 +35,13 @@ def _switch_name(old_name, subid, sess, task="", run: str = ""):
     tuple
         [0] = scan type (anat, func, fmap)
         [1] = BIDS-formatted file name, sans extension
+
     """
+    # Start BIDS file name string
     base_str = f"sub-{subid}_{sess}"
+
+    # Key is from dcm2niix file names, value tuple contains
+    # BIDS directory and file names.
     name_dict = {
         "DICOM_EmoRep_anat": ("anat", f"{base_str}_T1w"),
         f"DICOM_EmoRep_run{run}": (
@@ -49,7 +54,7 @@ def _switch_name(old_name, subid, sess, task="", run: str = ""):
         ),
         "DICOM_Field_Map_P_A": ("fmap", f"{base_str}_acq-rpe_dir-PA_epi"),
     }
-    return name_dict[old_name]
+    return name_dict[dcm2niix_name]
 
 
 def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
@@ -64,7 +69,7 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
         Paths to nii files output by dcm2niix
     json_list : list
         Paths to json files output by dcm2niix
-    subj_raw : Path
+    subj_raw : path
         Subject's rawdata directory
     subid : str
         Subject identifier
@@ -82,21 +87,35 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
     ------
     FileNotFoundError
         If BIDS-organized T1w files are not found for the session.
+
     """
-    # Move and rename nii files
     print(f"\t Renaming, organizing NIfTIs for sub-{subid}, {sess} ...")
-    for h_nii, h_json in zip(nii_list, json_list):
-        old_name = os.path.basename(h_nii).split("_20")[0]
-        if "run" in old_name:
-            run = old_name.split("run")[1]
-            new_dir, new_name = _switch_name(old_name, subid, sess, task, run)
+
+    # Rename and move each file in nii, json lists
+    nii_json_list = nii_list + json_list
+    for h_file in nii_json_list:
+
+        # Get first part of file name, use as key in dict-switch to
+        # get (new) BIDS directory and file name.
+        dcm2niix_name = os.path.basename(h_file).split("_20")[0]
+        if "run" in dcm2niix_name:
+            run = dcm2niix_name.split("run")[1]
+            bids_dir, bids_name = _switch_name(
+                dcm2niix_name, subid, sess, task, run
+            )
         else:
-            new_dir, new_name = _switch_name(old_name, subid, sess)
-        new_path = os.path.join(os.path.dirname(h_nii), new_dir)
-        if not os.path.exists(new_path):
-            os.makedirs(new_path)
-        shutil.move(h_nii, f"{new_path}/{new_name}.nii.gz")
-        shutil.move(h_json, f"{new_path}/{new_name}.json")
+            bids_dir, bids_name = _switch_name(dcm2niix_name, subid, sess)
+
+        # Setup path to new BIDs directory
+        bids_path = os.path.join(os.path.dirname(h_file), bids_dir)
+        if not os.path.exists(bids_path):
+            os.makedirs(bids_path)
+
+        # Determine extension, move and rename json, nii files
+        file_ext = (
+            ".json" if os.path.splitext(h_file)[1] == ".json" else ".nii.gz"
+        )
+        shutil.move(h_file, f"{bids_path}/{bids_name}{file_ext}")
 
     # Make T1w list for return
     t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
@@ -106,13 +125,18 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
     # Update fmap json with "IntendedFor" field
     print(f"\t Updating fmap jsons for sub-{subid}, {sess} ...")
     try:
+        # Extract session and file name, per BIDS validator reqs
         bold_list = [
             x.split(f"sub-{subid}/")[1]
             for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
         ]
+
+        # Open fmap json
         fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
         with open(fmap_json) as jf:
             fmap_dict = json.load(jf)
+
+        # Update fmap json with intended list, write
         fmap_dict["IntendedFor"] = bold_list
         with open(fmap_json, "w") as jf:
             json.dump(fmap_dict, jf)
@@ -123,9 +147,13 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
     print(f"\t Updating func jsons for sub-{subid}, {sess} ...")
     func_json_all = sorted(glob.glob(f"{subj_raw}/func/*_bold.json"))
     for func_json in func_json_all:
+
+        # Get task name, open json
         h_task = func_json.split("_task-")[1].split("_")[0]
         with open(func_json) as jf:
             func_dict = json.load(jf)
+
+        # Update, write json
         func_dict["TaskName"] = h_task
         with open(func_json, "w") as jf:
             json.dump(func_dict, jf)
@@ -136,12 +164,17 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
 def bidsify_exp(raw_path):
     """Create experiment-level BIDS files.
 
-    Write dataset_description.json and README.
+    Write dataset_description.json, README, and .bidsignore.
 
     Parameters
     ----------
-    raw_path : Path
+    raw_path : path
         Location of parent rawdata directory
+
+    Returns
+    -------
+    None
+
     """
     # Generate dataset_description file
     data_desc = {
