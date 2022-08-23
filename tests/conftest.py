@@ -9,7 +9,7 @@ import glob
 import shutil
 
 try:
-    from dcm_conversion import process, bidsify
+    from dcm_conversion.resources import process, bidsify
 except ImportError:
     dcm_conversion = None
 
@@ -37,7 +37,8 @@ def local_vars():
     if not os.path.exists(test_raw):
         os.makedirs(test_raw)
 
-    return {
+    # Yield, then teardown all
+    yield {
         "subid": subid,
         "sess": sess,
         "task": task,
@@ -48,11 +49,12 @@ def local_vars():
         "ref_t1w": ref_t1w,
         "ref_deface": ref_deface,
     }
+    shutil.rmtree(os.path.dirname(test_raw))
 
 
-@pytest.fixture(scope="session")
-def ref_info(local_vars):
-    # Execute convert methods, get outputs
+@pytest.fixture(scope="package")
+def info_dcm_bids(local_vars):
+    # Conduct dcm2niix, bidsify
     nii_list, json_list = process.dcm2niix(
         local_vars["subj_source"],
         local_vars["test_raw"],
@@ -69,31 +71,43 @@ def ref_info(local_vars):
         local_vars["task"],
     )
 
-    # Execute process method, get output
+    # Update local_vars as new dict
+    dcm2niix_dict = local_vars
+    h_dict = {
+        "nii_list": nii_list,
+        "json_list": json_list,
+        "test_t1w": t1_list[0],
+    }
+    dcm2niix_dict.update(h_dict)
+
+    # Supply dict values while testing
+    yield dcm2niix_dict
+
+
+@pytest.fixture(scope="function")
+def info_deface(local_vars):
+    # Execute deface method
     process.deface(
-        t1_list,
+        [local_vars["ref_t1w"]],
         local_vars["test_dir"],
         local_vars["subid"],
         local_vars["sess"],
     )
-    test_deface = sorted(
-        glob.glob(
-            f"{local_vars['test_dir']}/deface/**/*defaced.nii.gz",
-            recursive=True,
-        )
+
+    # Get output of process.deface
+    out_dir = os.path.join(
+        local_vars["test_dir"],
+        "deface",
+        local_vars["subid"],
+        local_vars["sess"],
     )
+    deface_file = glob.glob(f"{out_dir}/*defaced.nii.gz")[0]
 
-    # Update local_vars as new dict
-    fixt_dict = local_vars
-    test_dict = {
-        "nii_list": nii_list,
-        "json_list": json_list,
-        "test_t1w": t1_list[0],
-        "test_deface": test_deface[0],
-    }
-    fixt_dict.update(test_dict)
+    # Update dictionary
+    deface_dict = local_vars
+    h_dict = {"test_deface": deface_file}
+    deface_dict.update(h_dict)
 
-    # Supply dict values while testing, then clean
-    yield fixt_dict
-    shutil.rmtree(os.path.dirname(local_vars["test_raw"]))
+    # Supply while testing
+    yield deface_dict
     shutil.rmtree(os.path.join(local_vars["test_dir"], "deface"))
