@@ -98,7 +98,7 @@ def info_deface(local_vars):
     out_dir = os.path.join(
         local_vars["test_dir"],
         "deface",
-        local_vars["subid"],
+        f"sub-{local_vars['subid']}",
         local_vars["sess"],
     )
     deface_file = glob.glob(f"{out_dir}/*defaced.nii.gz")[0]
