@@ -1,12 +1,8 @@
-"""Unit testing of dcm_conversion.process.
-
-Written for labaserv2, keoki environment.
-"""
 import pytest
 import nibabel as nib
 
 
-@pytest.mark.dcm2niix
+@pytest.mark.dcm_bids
 def test_dcm2niix(info_dcm_bids):
     # Load ref data
     ref_t1w = info_dcm_bids["ref_t1w"]

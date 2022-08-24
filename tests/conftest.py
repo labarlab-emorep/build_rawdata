@@ -111,3 +111,25 @@ def info_deface(local_vars):
     # Supply while testing
     yield deface_dict
     shutil.rmtree(os.path.join(local_vars["test_dir"], "deface"))
+
+
+@pytest.fixture(scope="function")
+def info_exp_bids(local_vars):
+    # Execute bidisfy method
+    raw_path = local_vars["test_raw"]
+    bidsify.bidsify_exp(raw_path)
+
+    # Make paths to output
+    data_desc = os.path.join(raw_path, "dataset_description.json")
+    read_me = os.path.join(raw_path, "README")
+    ignore_file = os.path.join(raw_path, ".bidsignore")
+
+    # Update dict, yield
+    bids_dict = local_vars
+    h_dict = {
+        "data_desc": data_desc,
+        "read_me": read_me,
+        "ignore_file": ignore_file,
+    }
+    bids_dict.update(h_dict)
+    yield bids_dict
