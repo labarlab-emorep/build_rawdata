@@ -9,7 +9,7 @@ import glob
 import shutil
 
 try:
-    from dcm_conversion.resources import process, bidsify
+    from dcm_conversion.resources import process, bidsify, behavior
 except ImportError:
     dcm_conversion = None
 
@@ -28,6 +28,12 @@ def local_vars():
     ref_t1w = os.path.join(ref_dir, "sub-ER0009_ses-day2_T1w.nii.gz")
     ref_deface = os.path.join(
         ref_dir, "sub-ER0009_ses-day2_T1w_defaced.nii.gz"
+    )
+    ref_beh_tsv = os.path.join(
+        ref_dir, "sub-ER0009_ses-day2_task-movies_run-01_events.tsv"
+    )
+    ref_beh_json = os.path.join(
+        ref_dir, "sub-ER0009_ses-day2_task-movies_run-01_events.json"
     )
     test_raw = os.path.join(test_dir, f"sub-{subid}", sess)
     dcm_dirs = sorted(glob.glob(f"{source_path}/{subid}/day*/DICOM"))
@@ -48,6 +54,8 @@ def local_vars():
         "ref_dir": ref_dir,
         "ref_t1w": ref_t1w,
         "ref_deface": ref_deface,
+        "ref_beh_tsv": ref_beh_tsv,
+        "ref_beh_json": ref_beh_json,
     }
     shutil.rmtree(os.path.dirname(test_raw))
 
@@ -113,7 +121,7 @@ def info_deface(local_vars):
     shutil.rmtree(os.path.join(local_vars["test_dir"], "deface"))
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def info_exp_bids(local_vars):
     # Execute bidisfy method
     raw_path = local_vars["test_raw"]
@@ -133,3 +141,36 @@ def info_exp_bids(local_vars):
     }
     bids_dict.update(h_dict)
     yield bids_dict
+
+
+@pytest.fixture(scope="module")
+def info_behavior(local_vars):
+    # Execute behavior.events method
+    raw_path = local_vars["test_raw"]
+    beh_source = os.path.join(
+        os.path.dirname(local_vars["subj_source"]), "Scanner_behav"
+    )
+    beh_raw = sorted(glob.glob(f"{beh_source}/*run-1*csv"))[0]
+    behavior.events(
+        beh_raw,
+        raw_path,
+        local_vars["subid"],
+        local_vars["sess"],
+        f"task-{local_vars['task']}",
+        "run-01",
+    )
+
+    # Add outputs to fixt dict
+    events_tsv = os.path.join(
+        raw_path, "sub-ER0009_ses-day2_task-movies_run-01_events.tsv"
+    )
+    events_json = os.path.join(
+        raw_path, "sub-ER0009_ses-day2_task-movies_run-01_events.json"
+    )
+    beh_dict = local_vars
+    h_dict = {
+        "events_tsv": events_tsv,
+        "events_json": events_json,
+    }
+    beh_dict.update(h_dict)
+    yield beh_dict
