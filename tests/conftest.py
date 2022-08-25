@@ -1,12 +1,9 @@
-"""Generate fixtures.
-
-Make fixtures used by test_convert, test_process.
-Written for labaserv2, keoki environment.
-"""
+# %%
 import pytest
 import os
 import glob
 import shutil
+from copy import deepcopy
 
 try:
     from dcm_conversion.resources import process, bidsify, behavior
@@ -14,17 +11,18 @@ except ImportError:
     dcm_conversion = None
 
 
+# %%
 @pytest.fixture(scope="session")
-def local_vars():
+def fixt_setup():
     # Hardcode variables for specific testing
     subid = "ER0009"
     sess = "ses-day2"
     task = "movies"
-    source_path = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourcedata"
+    proj_dir = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS"
 
-    # Setup paths
-    test_dir = os.path.join(os.path.dirname(source_path), "code/unit_test")
-    ref_dir = os.path.join(test_dir, "ref_data")
+    # Setup reference variables
+    unit_dir = os.path.join(proj_dir, "code/unit_test")
+    ref_dir = os.path.join(unit_dir, "ref_data")
     ref_t1w = os.path.join(ref_dir, "sub-ER0009_ses-day2_T1w.nii.gz")
     ref_deface = os.path.join(
         ref_dir, "sub-ER0009_ses-day2_T1w_defaced.nii.gz"
@@ -35,52 +33,59 @@ def local_vars():
     ref_beh_json = os.path.join(
         ref_dir, "sub-ER0009_ses-day2_task-movies_run-01_events.json"
     )
-    test_raw = os.path.join(test_dir, f"sub-{subid}", sess)
-    dcm_dirs = sorted(glob.glob(f"{source_path}/{subid}/day*/DICOM"))
-    subj_source = dcm_dirs[0]
 
-    # Make output dir
-    if not os.path.exists(test_raw):
-        os.makedirs(test_raw)
+    # Setup test variables
+    test_subj = os.path.join(unit_dir, f"sub-{subid}")
+    test_subj_sess = os.path.join(test_subj, sess)
 
-    # Yield, then teardown all
-    yield {
+    return {
         "subid": subid,
         "sess": sess,
         "task": task,
-        "subj_source": subj_source,
-        "test_dir": test_dir,
-        "test_raw": test_raw,
-        "ref_dir": ref_dir,
+        "proj_dir": proj_dir,
+        "unit_dir": unit_dir,
         "ref_t1w": ref_t1w,
         "ref_deface": ref_deface,
         "ref_beh_tsv": ref_beh_tsv,
         "ref_beh_json": ref_beh_json,
+        "test_subj": test_subj,
+        "test_subj_sess": test_subj_sess,
     }
-    shutil.rmtree(os.path.dirname(test_raw))
 
 
-@pytest.fixture(scope="package")
-def info_dcm_bids(local_vars):
+# %%
+@pytest.fixture(scope="session")
+def fixt_dcm_bids(fixt_setup):
+    # Make output dir
+    out_dir = fixt_setup["test_subj_sess"]
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    # Find dicom dir
+    source_subj = os.path.join(
+        fixt_setup["proj_dir"], "sourcedata", fixt_setup["subid"]
+    )
+    dcm_dir = sorted(glob.glob(f"{source_subj}/day*/DICOM"))[0]
+
     # Conduct dcm2niix, bidsify
     nii_list, json_list = process.dcm2niix(
-        local_vars["subj_source"],
-        local_vars["test_raw"],
-        local_vars["subid"],
-        local_vars["sess"],
-        local_vars["task"],
+        dcm_dir,
+        out_dir,
+        fixt_setup["subid"],
+        fixt_setup["sess"],
+        fixt_setup["task"],
     )
     t1_list = bidsify.bidsify_nii(
         nii_list,
         json_list,
-        local_vars["test_raw"],
-        local_vars["subid"],
-        local_vars["sess"],
-        local_vars["task"],
+        out_dir,
+        fixt_setup["subid"],
+        fixt_setup["sess"],
+        fixt_setup["task"],
     )
 
-    # Update local_vars as new dict
-    dcm2niix_dict = local_vars
+    # Update fixt_setup as new dict
+    dcm2niix_dict = deepcopy(fixt_setup)
     h_dict = {
         "nii_list": nii_list,
         "json_list": json_list,
@@ -88,89 +93,107 @@ def info_dcm_bids(local_vars):
     }
     dcm2niix_dict.update(h_dict)
 
-    # Supply dict values while testing
+    # Yield dict and teardown
     yield dcm2niix_dict
+    shutil.rmtree(os.path.dirname(out_dir))
 
 
+# %%
 @pytest.fixture(scope="function")
-def info_deface(local_vars):
+def fixt_deface(fixt_setup):
     # Execute deface method
     process.deface(
-        [local_vars["ref_t1w"]],
-        local_vars["test_dir"],
-        local_vars["subid"],
-        local_vars["sess"],
+        [fixt_setup["ref_t1w"]],
+        fixt_setup["unit_dir"],
+        fixt_setup["subid"],
+        fixt_setup["sess"],
     )
 
     # Get output of process.deface
     out_dir = os.path.join(
-        local_vars["test_dir"],
+        fixt_setup["unit_dir"],
         "deface",
-        f"sub-{local_vars['subid']}",
-        local_vars["sess"],
+        f"sub-{fixt_setup['subid']}",
+        fixt_setup["sess"],
     )
     deface_file = glob.glob(f"{out_dir}/*defaced.nii.gz")[0]
 
     # Update dictionary
-    deface_dict = local_vars
+    deface_dict = deepcopy(fixt_setup)
     h_dict = {"test_deface": deface_file}
     deface_dict.update(h_dict)
 
-    # Supply while testing
+    # Yield dict and teardown
     yield deface_dict
-    shutil.rmtree(os.path.join(local_vars["test_dir"], "deface"))
+    shutil.rmtree(os.path.join(fixt_setup["unit_dir"], "deface"))
 
 
-@pytest.fixture(scope="module")
-def info_exp_bids(local_vars):
+@pytest.fixture(scope="function")
+def fixt_exp_bids(fixt_setup):
     # Execute bidisfy method
-    raw_path = local_vars["test_raw"]
-    bidsify.bidsify_exp(raw_path)
+    out_dir = fixt_setup["test_subj"]
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    bidsify.bidsify_exp(out_dir)
 
     # Make paths to output
-    data_desc = os.path.join(raw_path, "dataset_description.json")
-    read_me = os.path.join(raw_path, "README")
-    ignore_file = os.path.join(raw_path, ".bidsignore")
+    data_desc = os.path.join(out_dir, "dataset_description.json")
+    read_me = os.path.join(out_dir, "README")
+    ignore_file = os.path.join(out_dir, ".bidsignore")
 
-    # Update dict, yield
-    bids_dict = local_vars
+    # Update dict
+    bids_dict = deepcopy(fixt_setup)
     h_dict = {
         "data_desc": data_desc,
         "read_me": read_me,
         "ignore_file": ignore_file,
     }
     bids_dict.update(h_dict)
+
+    # Yield and teardown
     yield bids_dict
+    shutil.rmtree(out_dir)
 
 
 @pytest.fixture(scope="module")
-def info_behavior(local_vars):
-    # Execute behavior.events method
-    raw_path = local_vars["test_raw"]
-    beh_source = os.path.join(
-        os.path.dirname(local_vars["subj_source"]), "Scanner_behav"
+def fixt_behavior(fixt_setup):
+    # Make out_dir
+    out_dir = fixt_setup["test_subj"]
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    # Find source csv
+    source_subj = os.path.join(
+        fixt_setup["proj_dir"], "sourcedata", fixt_setup["subid"]
     )
-    beh_raw = sorted(glob.glob(f"{beh_source}/*run-1*csv"))[0]
+    task_file = sorted(
+        glob.glob(f"{source_subj}/day*/Scanner_behav/*run-1*csv")
+    )[0]
+
+    # Execute behavior.events method
     behavior.events(
-        beh_raw,
-        raw_path,
-        local_vars["subid"],
-        local_vars["sess"],
-        f"task-{local_vars['task']}",
+        task_file,
+        out_dir,
+        fixt_setup["subid"],
+        fixt_setup["sess"],
+        f"task-{fixt_setup['task']}",
         "run-01",
     )
 
     # Add outputs to fixt dict
     events_tsv = os.path.join(
-        raw_path, "sub-ER0009_ses-day2_task-movies_run-01_events.tsv"
+        out_dir, "sub-ER0009_ses-day2_task-movies_run-01_events.tsv"
     )
     events_json = os.path.join(
-        raw_path, "sub-ER0009_ses-day2_task-movies_run-01_events.json"
+        out_dir, "sub-ER0009_ses-day2_task-movies_run-01_events.json"
     )
-    beh_dict = local_vars
+    beh_dict = deepcopy(fixt_setup)
     h_dict = {
         "events_tsv": events_tsv,
         "events_json": events_json,
     }
     beh_dict.update(h_dict)
+
+    # Yield and teardown
     yield beh_dict
+    shutil.rmtree(out_dir)
