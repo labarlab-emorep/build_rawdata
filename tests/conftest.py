@@ -1,9 +1,7 @@
-# %%
 import pytest
 import os
 import glob
 import shutil
-from copy import deepcopy
 
 try:
     from dcm_conversion.resources import process, bidsify, behavior
@@ -11,7 +9,6 @@ except ImportError:
     dcm_conversion = None
 
 
-# %%
 @pytest.fixture(scope="session")
 def fixt_setup():
     # Hardcode variables for specific testing
@@ -38,7 +35,7 @@ def fixt_setup():
     test_subj = os.path.join(unit_dir, f"sub-{subid}")
     test_subj_sess = os.path.join(test_subj, sess)
 
-    return {
+    yield {
         "subid": subid,
         "sess": sess,
         "task": task,
@@ -51,10 +48,10 @@ def fixt_setup():
         "test_subj": test_subj,
         "test_subj_sess": test_subj_sess,
     }
+    shutil.rmtree(test_subj)
 
 
-# %%
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def fixt_dcm_bids(fixt_setup):
     # Make output dir
     out_dir = fixt_setup["test_subj_sess"]
@@ -84,21 +81,15 @@ def fixt_dcm_bids(fixt_setup):
         fixt_setup["task"],
     )
 
-    # Update fixt_setup as new dict
-    dcm2niix_dict = deepcopy(fixt_setup)
-    h_dict = {
+    # Yield dict and teardown
+    yield {
         "nii_list": nii_list,
         "json_list": json_list,
         "test_t1w": t1_list[0],
     }
-    dcm2niix_dict.update(h_dict)
-
-    # Yield dict and teardown
-    yield dcm2niix_dict
-    shutil.rmtree(os.path.dirname(out_dir))
+    shutil.rmtree(out_dir)
 
 
-# %%
 @pytest.fixture(scope="function")
 def fixt_deface(fixt_setup):
     # Execute deface method
@@ -118,22 +109,19 @@ def fixt_deface(fixt_setup):
     )
     deface_file = glob.glob(f"{out_dir}/*defaced.nii.gz")[0]
 
-    # Update dictionary
-    deface_dict = deepcopy(fixt_setup)
-    h_dict = {"test_deface": deface_file}
-    deface_dict.update(h_dict)
-
     # Yield dict and teardown
-    yield deface_dict
+    yield {"test_deface": deface_file}
     shutil.rmtree(os.path.join(fixt_setup["unit_dir"], "deface"))
 
 
 @pytest.fixture(scope="function")
 def fixt_exp_bids(fixt_setup):
-    # Execute bidisfy method
+    # Setup output location
     out_dir = fixt_setup["test_subj"]
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+
+    # Run method
     bidsify.bidsify_exp(out_dir)
 
     # Make paths to output
@@ -141,18 +129,15 @@ def fixt_exp_bids(fixt_setup):
     read_me = os.path.join(out_dir, "README")
     ignore_file = os.path.join(out_dir, ".bidsignore")
 
-    # Update dict
-    bids_dict = deepcopy(fixt_setup)
-    h_dict = {
+    # Yield and teardown
+    yield {
         "data_desc": data_desc,
         "read_me": read_me,
         "ignore_file": ignore_file,
     }
-    bids_dict.update(h_dict)
-
-    # Yield and teardown
-    yield bids_dict
-    shutil.rmtree(out_dir)
+    for h_file in [data_desc, read_me, ignore_file]:
+        if os.path.exists(h_file):
+            os.remove(h_file)
 
 
 @pytest.fixture(scope="module")
@@ -187,13 +172,12 @@ def fixt_behavior(fixt_setup):
     events_json = os.path.join(
         out_dir, "sub-ER0009_ses-day2_task-movies_run-01_events.json"
     )
-    beh_dict = deepcopy(fixt_setup)
-    h_dict = {
+
+    # Yield and teardown
+    yield {
         "events_tsv": events_tsv,
         "events_json": events_json,
     }
-    beh_dict.update(h_dict)
-
-    # Yield and teardown
-    yield beh_dict
-    shutil.rmtree(out_dir)
+    for h_file in [events_json, events_tsv]:
+        if os.path.exists(h_file):
+            os.remove(h_file)
