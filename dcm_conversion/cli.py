@@ -102,7 +102,7 @@ def main():
     for h_dir in [deriv_dir, raw_path]:
         if not os.path.exists(h_dir):
             os.makedirs(h_dir)
-    bidsify.bidsify_exp(raw_path)
+    _ = bidsify.bidsify_exp(raw_path)
 
     # Find each subject's source data
     for subid in sub_list:

@@ -33,7 +33,7 @@ def _split(sess_task, subid):
         task_check = True if task == "movies" or task == "scenarios" else False
         if not sess_check or not task_check:
             raise FileNotFoundError
-        return (sess, task)
+        return (sess, f"task-{task}")
     except (ValueError, FileNotFoundError):
         print(
             f"""
@@ -91,7 +91,7 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
         if not t1_list:
             nii_list, json_list = process.dcm2niix(
-                subj_source, subj_raw, subid, sess, task
+                subj_source, subj_raw, subid, sess
             )
             t1_list = bidsify.bidsify_nii(
                 nii_list, json_list, subj_raw, subid, sess, task
@@ -99,7 +99,7 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
 
         # Run defacing
         if do_deface:
-            process.deface(t1_list, deriv_dir, subid, sess)
+            _ = process.deface(t1_list, deriv_dir, subid, sess)
         print("\t Done!")
 
 
@@ -129,8 +129,7 @@ def _process_beh(beh_list, raw_path, subid):
         except IndexError:
             run = "run-0" + task_file.split("run")[1].split("_")[0]
         sess_task = "ses-day" + task_file.split("day")[1].split("/")[0]
-        sess, h_task = _split(sess_task, subid)
-        task = "task-" + h_task
+        sess, task = _split(sess_task, subid)
         if not sess:
             continue
 
@@ -139,7 +138,7 @@ def _process_beh(beh_list, raw_path, subid):
         subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        behavior.events(task_file, subj_raw, subid, sess, task, run)
+        _, _ = behavior.events(task_file, subj_raw, subid, sess, task, run)
 
 
 # %%
@@ -169,7 +168,6 @@ def _process_phys(phys_list, raw_path, subid):
         # Get session, task strings
         sess_task = "ses-day" + phys_file.split("day")[1].split("/")[0]
         sess, h_task = _split(sess_task, subid)
-        task = "task-" + h_task
         if not sess:
             continue
 
