@@ -46,7 +46,7 @@ def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
         "DICOM_EmoRep_anat": ("anat", f"{base_str}_T1w"),
         f"DICOM_EmoRep_run{run}": (
             "func",
-            f"{base_str}_task-{task}_run-{run}_bold",
+            f"{base_str}_{task}_run-{run}_bold",
         ),
         f"DICOM_Rest_run{run}": (
             "func",

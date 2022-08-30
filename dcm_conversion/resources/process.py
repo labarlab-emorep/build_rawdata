@@ -32,7 +32,7 @@ def _error_msg(msg, stdout, stderr):
     print(textwrap.dedent(error_message))
 
 
-def dcm2niix(subj_source, subj_raw, subid, sess, task):
+def dcm2niix(subj_source, subj_raw, subid, sess):
     """Conduct dcm2niix.
 
     Point dcm2niix at a DICOM directory, rename NIfTI
@@ -49,8 +49,6 @@ def dcm2niix(subj_source, subj_raw, subid, sess, task):
         Subject identifier
     sess : str
         BIDS-formatted session string
-    task : str
-        BIDS-formatted task string
 
     Notes
     -----
@@ -137,6 +135,7 @@ def deface(t1_list, deriv_dir, subid, sess):
     if not os.path.exists(subj_deriv):
         os.makedirs(subj_deriv)
 
+    deface_list = []
     for t1_path in t1_list:
         print(f"\t Defacing T1w for sub-{subid}, {sess} ...")
 
@@ -161,4 +160,6 @@ def deface(t1_list, deriv_dir, subid, sess):
         # Check for output
         if not os.path.exists(t1_deface):
             raise FileNotFoundError(f"Defacing failed for {t1_path}.")
-        return t1_deface
+        deface_list.append(t1_deface)
+
+    return deface_list

@@ -52,7 +52,7 @@ def test_func_update(fixt_setup, fixt_dcm_bids):
     with open(func_json) as jf:
         func_dict = json.load(jf)
     assert func_dict.__contains__("TaskName")
-    assert func_dict["TaskName"] == fixt_setup["task"]
+    assert func_dict["TaskName"] == fixt_setup["task"].split("-")[1]
 
 
 def test_bidsify_exp(fixt_exp_bids):
