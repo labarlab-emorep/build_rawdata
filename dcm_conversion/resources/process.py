@@ -120,16 +120,17 @@ def deface(t1_list, deriv_dir, subid, sess):
 
     Notes
     -----
-    Writes defaced file to subject's derivatives/deface.
+    Writes defaced file to subject's derivatives/deface
 
     Returns
     -------
-    None
+    path
+        Location of defaced T1w file
 
     Raises
     ------
     FileNotFoundError
-        If defaced file not detected.
+        If defaced file not detected
     """
     # Setup subject deface derivatives dir
     subj_deriv = os.path.join(deriv_dir, "deface", f"sub-{subid}", sess)
@@ -160,3 +161,4 @@ def deface(t1_list, deriv_dir, subid, sess):
         # Check for output
         if not os.path.exists(t1_deface):
             raise FileNotFoundError(f"Defacing failed for {t1_path}.")
+        return t1_deface

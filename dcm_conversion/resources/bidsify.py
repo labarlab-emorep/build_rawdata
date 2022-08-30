@@ -173,10 +173,12 @@ def bidsify_exp(raw_path):
 
     Returns
     -------
-    None
+    list
+        Paths to written files
 
     """
     # Generate dataset_description file
+    file_desc = f"{raw_path}/dataset_description.json"
     data_desc = {
         "Name": "EmoRep",
         "BIDSVersion": "1.7.0",
@@ -184,13 +186,17 @@ def bidsify_exp(raw_path):
         "Funding": ["1R01MH113238"],
         "GeneratedBy": [{"Name": "dcm2niix", "Version": "v1.0.20211006"}],
     }
-    with open(f"{raw_path}/dataset_description.json", "w") as jf:
+    with open(file_desc, "w") as jf:
         json.dump(data_desc, jf)
 
     # Generate README file
-    with open(f"{raw_path}/README", "w") as rf:
+    file_readme = f"{raw_path}/README"
+    with open(file_readme, "w") as rf:
         rf.write("TODO: update")
 
     # Add ignore file for physio data
-    with open(f"{raw_path}/.bidsignore", "w") as igf:
+    file_ignore = f"{raw_path}/.bidsignore"
+    with open(file_ignore, "w") as igf:
         igf.write("**/*.acq")
+
+    return [file_desc, file_readme, file_ignore]

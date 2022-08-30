@@ -209,7 +209,9 @@ def events(task_file, subj_raw, subid, sess, task, run):
 
     Returns
     -------
-    None
+    tuple
+        [0] = Path to events.tsv
+        [1] = Path to events.json
 
     """
     # Setup task-specific trial_type and on/off values
@@ -248,11 +250,13 @@ def events(task_file, subj_raw, subid, sess, task, run):
         events_info.get_info(h_name, on_off[0], on_off[1])
 
     # Write out events file
-    out_file = os.path.join(
+    event_tsv = os.path.join(
         subj_raw,
         f"sub-{subid}_{sess}_{task}_{run}_events.tsv",
     )
-    events_info.events_df.to_csv(out_file, sep="\t", index=False, na_rep="NaN")
+    events_info.events_df.to_csv(
+        event_tsv, sep="\t", index=False, na_rep="NaN"
+    )
     del events_info
 
     # Prepare task info for events json
@@ -314,3 +318,5 @@ def events(task_file, subj_raw, subid, sess, task, run):
     event_json = f"{subj_raw}/sub-{subid}_{sess}_{task}_{run}_events.json"
     with open(event_json, "w") as jf:
         json.dump(event_dict, jf)
+
+    return (event_tsv, event_json)

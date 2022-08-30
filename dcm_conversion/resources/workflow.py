@@ -99,7 +99,7 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
 
         # Run defacing
         if do_deface:
-            process.deface(t1_list, deriv_dir, subid, sess)
+            _ = process.deface(t1_list, deriv_dir, subid, sess)
         print("\t Done!")
 
 
@@ -139,7 +139,7 @@ def _process_beh(beh_list, raw_path, subid):
         subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        behavior.events(task_file, subj_raw, subid, sess, task, run)
+        _, _ = behavior.events(task_file, subj_raw, subid, sess, task, run)
 
 
 # %%
