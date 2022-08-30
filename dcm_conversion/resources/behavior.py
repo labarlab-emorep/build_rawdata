@@ -55,7 +55,7 @@ class _EventsData:
         """
         self.run_df = pd.read_csv(task_file, na_values=["None", "none"])
         self.resp_na = resp_na
-        self.events_cols = [
+        events_cols = [
             "onset",
             "duration",
             "trial_type",
@@ -64,7 +64,67 @@ class _EventsData:
             "response_time",
             "accuracy",
         ]
-        self.events_df = pd.DataFrame(columns=self.events_cols)
+        self.events_df = pd.DataFrame(columns=events_cols)
+
+    def _stim_info(self, event_name, idx_onset):
+        """Conditionally get event stimulus info."""
+        # Setup string switch for certain events
+        stim_switch = {
+            "fixS": "fixation_cross",
+            "fix": "fixation_cross",
+            "replay": "prompt_replay",
+            "judge": "prompt_in_out",
+            "emotion": "select_emotion",
+            "intensity": "select_intensity",
+        }
+
+        # Get stim_info, accounting for different events
+        if event_name in stim_switch.keys():
+            h_stim_info = np.repeat(
+                stim_switch[event_name], len(idx_onset)
+            ).tolist()
+        elif event_name in ["movie", "scenario", "wash"]:
+            h_stim_info = self.run_df.loc[idx_onset, "stimdescrip"].tolist()
+        else:
+            h_stim_info = np.repeat(self.resp_na, len(idx_onset)).tolist()
+
+        return h_stim_info
+
+    def _judge_resp(self):
+        """Get and parse judgment responses."""
+        idx_jud_resp = self.run_df.index[
+            self.run_df["type"] == "JudgeResponse"
+        ].tolist()
+        h_jud_resp = self.run_df.loc[idx_jud_resp, "stimtype"].tolist()
+        jud_resp = []
+        jud_acc = []
+        for h_jud in h_jud_resp:
+            if pd.isna(h_jud):
+                jud_resp.append(h_jud)
+                jud_acc.append(h_jud)
+            else:
+                jud_resp.append(h_jud[:1])
+                jud_acc.append(h_jud[1:])
+
+        return (idx_jud_resp, jud_resp, jud_acc)
+
+    def _resp_time(self, event_name, event_onset, idx_onset, idx_offset):
+        """Conditionally get response, response time."""
+        if event_name in ["emotion", "intensity"]:
+            h_resp = self.run_df.loc[idx_offset, "stimdescrip"].tolist()
+            h_resp_time = self.run_df.loc[idx_offset, "timefromstart"].tolist()
+            h_resp_time = [x - y for x, y in zip(h_resp_time, event_onset)]
+            h_resp_time = [round(float(x), 2) for x in h_resp_time]
+        elif event_name == "judge":
+            idx_jud_resp, jud_resp, _ = self._judge_resp()
+            h_resp = jud_resp
+            h_resp_time = self.run_df.loc[idx_jud_resp, "stimdescrip"].tolist()
+            h_resp_time = [round(float(x), 2) for x in h_resp_time]
+        else:
+            h_resp = np.repeat(self.resp_na, len(idx_onset)).tolist()
+            h_resp_time = np.repeat(self.resp_na, len(idx_onset)).tolist()
+
+        return (h_resp, h_resp_time)
 
     def get_info(self, event_name, event_on, event_off):
         """Mine task file for events info.
@@ -95,92 +155,42 @@ class _EventsData:
         event_onset = [round(x, 2) for x in event_onset]
         event_duration = [round(x, 2) for x in event_duration]
 
-        # Start dictionary, populate with onset, duration, and trial_type
-        event_dict = dict.fromkeys(self.events_cols, "")
-        event_dict["onset"] = event_onset
-        event_dict["duration"] = event_duration
-        event_dict["trial_type"] = np.repeat(
-            event_name, len(idx_onset)
-        ).tolist()
+        # Set trial type
+        event_trial_type = np.repeat(event_name, len(idx_onset)).tolist()
 
-        # Setup string switch for certain events
-        stim_switch = {
-            "fixS": "fixation_cross",
-            "fix": "fixation_cross",
-            "replay": "prompt_replay",
-            "judge": "prompt_in_out",
-            "emotion": "select_emotion",
-            "intensity": "select_intensity",
+        # Get stimulus info for event
+        event_stim_info = self._stim_info(event_name, idx_onset)
+
+        # Determine response and response time
+        event_response, event_response_time = self._resp_time(
+            event_name, event_onset, idx_onset, idx_offset
+        )
+
+        # Determine accuracy of response
+        if event_name == "judge":
+            _, _, event_accuracy = self._judge_resp()
+        else:
+            event_accuracy = np.repeat(self.resp_na, len(idx_onset)).tolist()
+
+        # Make event dataframe
+        event_dict = {
+            "onset": event_onset,
+            "duration": event_duration,
+            "trial_type": event_trial_type,
+            "stim_info": event_stim_info,
+            "response": event_response,
+            "response_time": event_response_time,
+            "accuracy": event_accuracy,
         }
-
-        # Populate stim_info, accounting for different events
-        if event_name in ["movie", "scenario", "wash"]:
-            event_dict["stim_info"] = self.run_df.loc[
-                idx_onset, "stimdescrip"
-            ].tolist()
-        elif event_name in stim_switch.keys():
-            event_dict["stim_info"] = np.repeat(
-                stim_switch[event_name], len(idx_onset)
-            ).tolist()
-        else:
-            event_dict["stim_info"] = np.repeat(
-                self.resp_na, len(idx_onset)
-            ).tolist()
-
-        # Setup judge response, accuracy lists (a bit hacky)
-        if event_name == "judge":
-            idx_jud_resp = self.run_df.index[
-                self.run_df["type"] == "JudgeResponse"
-            ].tolist()
-            h_jud_resp = self.run_df.loc[idx_jud_resp, "stimtype"].tolist()
-            jud_resp = []
-            jud_acc = []
-            for h_jud in h_jud_resp:
-                if pd.isna(h_jud):
-                    jud_resp.append(h_jud)
-                    jud_acc.append(h_jud)
-                else:
-                    jud_resp.append(h_jud[:1])
-                    jud_acc.append(h_jud[1:])
-
-        # Populate response & response_time, accounting for different events
-        if event_name in ["emotion", "intensity"]:
-            event_dict["response"] = self.run_df.loc[
-                idx_offset, "stimdescrip"
-            ].tolist()
-            resp_time = self.run_df.loc[idx_offset, "timefromstart"].tolist()
-            resp_time = [x - y for x, y in zip(resp_time, event_onset)]
-            resp_time = [round(float(x), 2) for x in resp_time]
-            event_dict["response_time"] = resp_time
-        elif event_name == "judge":
-            event_dict["response"] = jud_resp
-            resp_time = self.run_df.loc[idx_jud_resp, "stimdescrip"].tolist()
-            resp_time = [round(float(x), 2) for x in resp_time]
-            event_dict["response_time"] = resp_time
-        else:
-            event_dict["response"] = np.repeat(
-                self.resp_na, len(idx_onset)
-            ).tolist()
-            event_dict["response_time"] = np.repeat(
-                self.resp_na, len(idx_onset)
-            ).tolist()
-
-        # Populate accuracy for judgment events
-        if event_name == "judge":
-            event_dict["accuracy"] = jud_acc
-        else:
-            event_dict["accuracy"] = np.repeat(
-                self.resp_na, len(idx_onset)
-            ).tolist()
-
-        # Convert to DataFrame, sort index by onset time
         df_event = pd.DataFrame(event_dict, columns=event_dict.keys())
+        del event_dict
+
+        # Append events_df with event dataframe, sort by onset time
         self.events_df = pd.concat(
             [self.events_df, df_event], ignore_index=True
         )
         self.events_df = self.events_df.sort_values(by=["onset"])
         self.events_df = self.events_df.reset_index(drop=True)
-        del event_dict
 
 
 # %%
