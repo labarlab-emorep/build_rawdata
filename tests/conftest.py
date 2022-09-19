@@ -12,9 +12,11 @@ def fixt_setup():
     subid = "ER0009"
     sess = "ses-day2"
     task = "task-movies"
-    proj_dir = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS"
+    proj_dir = (
+        "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS"
+    )
     test_par = (
-        "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS"
+        "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
         + "/code/unit_test/dcm_conversion"
     )
 
@@ -55,8 +57,6 @@ def fixt_setup():
     test_dir = os.path.join(test_par, "test_out")
     test_subj = os.path.join(test_dir, subj)
     test_subj_sess = os.path.join(test_subj, sess)
-    # if not os.path.exists(test_subj_sess):
-    #     os.makedirs(test_subj_sess)
 
     yield {
         "subid": subid,

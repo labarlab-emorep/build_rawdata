@@ -9,7 +9,7 @@ def setup():
     converted data for ER0009.
     """
     test_par = (
-        "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS"
+        "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
         + "/code/unit_test/dcm_conversion"
     )
     print(f"Setting up directory for testing:\n\t{test_par}\n")
@@ -19,7 +19,9 @@ def setup():
     sess = "ses-day2"
     task = "task-movies"
     run = "run-01"
-    proj_dir = "/mnt/keoki/experiments2/EmoRep/Emorep_BIDS"
+    proj_dir = (
+        "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS"
+    )
 
     # Setup unit test dir
     test_raw = os.path.join(test_par, "rawdata", f"sub-{subid}", sess)

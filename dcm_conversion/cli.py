@@ -14,7 +14,7 @@ dcm_conversion -s ER0009 ER0010 --deface
 
 python dcm_conversion/cli.py \
     --sub-list ER0009 \
-    --raw-dir /mnt/keoki/experiments2/EmoRep/Emorep_BIDS/test \
+    --raw-dir /mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/rawdata \
     --deface
 """
 # %%
@@ -44,7 +44,7 @@ def get_args():
     )
     parser.add_argument(
         "--raw-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/rawdata",
+        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/rawdata",
         help=textwrap.dedent(
             """\
             Path to DICOM parent directory "rawdata"
@@ -55,7 +55,7 @@ def get_args():
     )
     parser.add_argument(
         "--source-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Emorep_BIDS/sourcedata",
+        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/sourcedata",
         help=textwrap.dedent(
             """\
             Path to DICOM parent directory "sourcedata"
