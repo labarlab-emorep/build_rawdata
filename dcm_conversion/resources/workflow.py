@@ -4,6 +4,7 @@ import re
 import glob
 import shutil
 import pandas as pd
+import bioread
 import neurokit2 as nk
 from dcm_conversion.resources import process, bidsify, behavior
 
