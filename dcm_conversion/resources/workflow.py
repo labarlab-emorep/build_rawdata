@@ -134,11 +134,15 @@ def _process_beh(beh_list, raw_path, subid):
             continue
 
         # Make func events sidecars
-        print(f"\t Making events file for {task}, {run} ...")
         subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        _, _ = behavior.events(task_file, subj_raw, subid, sess, task, run)
+        out_file = os.path.join(
+            subj_raw, f"sub-{subid}_{sess}_{task}_{run}_events.tsv"
+        )
+        if not os.path.exists(out_file):
+            print(f"\t Making events file for {task}, {run} ...")
+            _, _ = behavior.events(task_file, subj_raw, subid, sess, task, run)
 
 
 # %%
@@ -162,7 +166,6 @@ def _process_phys(phys_list, raw_path, subid):
     None
 
     """
-    print("\t Copying physio files ...")
     for phys_file in phys_list:
 
         # Get session, task strings
@@ -174,6 +177,7 @@ def _process_phys(phys_list, raw_path, subid):
         # Get run, deal with resting task
         if "run" in phys_file:
             run = "run-0" + phys_file.split("_run")[1].split(".")[0]
+            task = h_task
         else:
             run = "run-01"
             task = "task-rest"
@@ -188,9 +192,11 @@ def _process_phys(phys_list, raw_path, subid):
             f"sub-{subid}_{sess}_{task}_{run}_recording-biopack_physio.acq",
         )
 
-        # Copy, rename
-        shutil.copy(phys_file, dest_orig)
-        os.rename(dest_orig, dest_new)
+        # Copy & rename if needed
+        if not os.path.exists(dest_new):
+            print(f"\t Copying physio data : {task} {run}")
+            shutil.copy(phys_file, dest_orig)
+            os.rename(dest_orig, dest_new)
 
 
 # %%
@@ -227,3 +233,4 @@ def dcm_worflow(
     _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface)
     _process_beh(beh_list, raw_path, subid)
     _process_phys(phys_list, raw_path, subid)
+    print(f"\t Done processing data for {subid}.")
