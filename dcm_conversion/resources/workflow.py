@@ -1,7 +1,10 @@
 """Coordinate modules into workflow."""
 import os
+import re
 import glob
 import shutil
+import pandas as pd
+import neurokit2 as nk
 from dcm_conversion.resources import process, bidsify, behavior
 
 
@@ -150,7 +153,8 @@ def _process_phys(phys_list, raw_path, subid):
     """Copy physio files.
 
     Rename physio files to BIDS convention, organize them
-    within subject session directories.
+    within subject session directories. Generate a tsv with
+    txt extension for Autonomate.
 
     Parameters
     ----------
@@ -187,16 +191,23 @@ def _process_phys(phys_list, raw_path, subid):
         if not os.path.exists(subj_phys):
             os.makedirs(subj_phys)
         dest_orig = os.path.join(subj_phys, os.path.basename(phys_file))
-        dest_new = os.path.join(
+        dest_acq = os.path.join(
             subj_phys,
             f"sub-{subid}_{sess}_{task}_{run}_recording-biopack_physio.acq",
         )
 
-        # Copy & rename if needed
-        if not os.path.exists(dest_new):
-            print(f"\t Copying physio data : {task} {run}")
+        # Generate tsv dataframe and copy data
+        if not os.path.exists(dest_acq):
+            print(f"\t Converting {sess} physio data : {task} {run}")
+            df_phys, _ = nk.read_acqknowledge(phys_file)
+            df_phys.to_csv(
+                re.sub(".acq$", ".txt", dest_acq),
+                header=False,
+                index=False,
+                sep="\t",
+            )
             shutil.copy(phys_file, dest_orig)
-            os.rename(dest_orig, dest_new)
+            os.rename(dest_orig, dest_acq)
 
 
 # %%

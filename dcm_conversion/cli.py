@@ -16,6 +16,7 @@ python dcm_conversion/cli.py \
     --sub-list ER0009 \
     --raw-dir /mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/rawdata \
     --deface
+
 """
 # %%
 import os
