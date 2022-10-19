@@ -219,15 +219,20 @@ def _process_phys(phys_list, raw_path, subid):
         # Generate tsv dataframe and copy data
         if not os.path.exists(dest_acq):
             print(f"\t Converting {sess} physio data : {task} {run}")
-            df_phys, _ = nk.read_acqknowledge(phys_file)
-            df_phys.to_csv(
-                re.sub(".acq$", ".txt", dest_acq),
-                header=False,
-                index=False,
-                sep="\t",
-            )
-            shutil.copy(phys_file, dest_orig)
-            os.rename(dest_orig, dest_acq)
+            try:
+                df_phys, _ = nk.read_acqknowledge(phys_file)
+                df_phys.to_csv(
+                    re.sub(".acq$", ".txt", dest_acq),
+                    header=False,
+                    index=False,
+                    sep="\t",
+                )
+                shutil.copy(phys_file, dest_orig)
+                os.rename(dest_orig, dest_acq)
+            except:
+                # nk throws the stupid struct.error, hence the naked catch.
+                "\t\t Insufficient data, continuing ..."
+                continue
 
 
 # %%
