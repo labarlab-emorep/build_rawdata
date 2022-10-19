@@ -10,10 +10,10 @@ Requires EmoRep_BIDS sourcedata organization.
 
 Examples
 --------
-dcm_conversion -s ER0009 ER0010 --deface
+dcm_conversion --sub-all --deface
 
 python dcm_conversion/cli.py \
-    --sub-list ER0009 \
+    --sub-list ER0009 ER0016 \
     --raw-dir /mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/rawdata \
     --deface
 
@@ -44,31 +44,28 @@ def get_args():
         ),
     )
     parser.add_argument(
-        "--raw-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/rawdata",
+        "--proj-dir",
+        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS",
         help=textwrap.dedent(
             """\
-            Path to DICOM parent directory "rawdata"
+            Path to BIDS organized parent directory, containing sourcedata
+            and rawdata.
             (default : %(default)s)
             """
         ),
         type=str,
     )
     parser.add_argument(
-        "--source-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/sourcedata",
+        "--sub-all",
+        action="store_true",
         help=textwrap.dedent(
             """\
-            Path to DICOM parent directory "sourcedata"
-            (default : %(default)s)
+            Whether to process all participant data in <proj_dir>/sourcedata,
+            True if "--sub-all" else False.
             """
         ),
-        type=str,
     )
-
-    required_args = parser.add_argument_group("Required Arguments")
-    required_args.add_argument(
-        "-s",
+    parser.add_argument(
         "--sub-list",
         nargs="+",
         help=textwrap.dedent(
@@ -78,7 +75,6 @@ def get_args():
             """
         ),
         type=str,
-        required=True,
     )
 
     if len(sys.argv) <= 1:
@@ -93,10 +89,13 @@ def main():
     """Coordinate module resources."""
     # Receive arguments
     args = get_args().parse_args()
-    source_path = args.source_dir
-    raw_path = args.raw_dir
+    proj_dir = args.proj_dir
+    sub_all = args.sub_all
     sub_list = args.sub_list
     do_deface = args.deface
+
+    raw_path = os.path.join(proj_dir, "rawdata")
+    source_path = os.path.join(proj_dir, "sourcedata")
 
     # Set derivatives location, write project BIDS files
     deriv_dir = os.path.join(os.path.dirname(raw_path), "derivatives")
@@ -104,6 +103,12 @@ def main():
         if not os.path.exists(h_dir):
             os.makedirs(h_dir)
     _ = bidsify.bidsify_exp(raw_path)
+
+    if sub_all:
+        sub_list = [
+            os.path.basename(x) for x in glob.glob(f"{source_path}/ER*")
+        ]
+        print(f"Option --sub-all envoked, processing data for:\n\t{sub_list}")
 
     # Find each subject's source data
     for subid in sub_list:

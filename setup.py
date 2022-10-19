@@ -9,6 +9,7 @@ setup(
             "dcm_conversion=dcm_conversion.cli:main",
         ]
     },
+    scripts=["dcm_conversion/bin/org_dcms.sh"],
     install_requires=[
         "bioread==3.0.0",
         "neurokit2==0.2.1",

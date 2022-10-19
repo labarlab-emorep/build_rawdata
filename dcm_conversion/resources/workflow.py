@@ -3,8 +3,8 @@ import os
 import re
 import glob
 import shutil
-import pandas as pd
-import bioread
+import subprocess as sp
+import bioread  # left here for generatings requirements files
 import neurokit2 as nk
 from dcm_conversion.resources import process, bidsify, behavior
 
@@ -90,10 +90,29 @@ def _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface):
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
 
-        # Check for existing niis, run dcm2niix, bidsify
-        print(f"\t Converting DICOMs for sub-{subid}, {sess} ...")
+        # Check for existing niis
         t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
         if not t1_list:
+
+            # Organize DICOMs, check
+            print(f"\t Organizing DICOMs for sub-{subid}, {sess} ...")
+            sh_run = sp.Popen(
+                f"org_dcms.sh -d {subj_source}",
+                shell=True,
+                stdout=sp.PIPE,
+                stderr=sp.PIPE,
+            )
+            sh_out, sh_err = sh_run.communicate()
+            sh_run.wait()
+            check_dir = os.path.join(subj_source, "EmoRep_anat")
+            if not os.path.exists(check_dir):
+                print(sh_out, sh_err)
+                raise FileNotFoundError(
+                    "Missing expected output of bin/org_dcms.sh"
+                )
+
+            # Run dcm2niix, bidsify
+            print(f"\t Converting DICOMs for sub-{subid}, {sess} ...")
             nii_list, json_list = process.dcm2niix(
                 subj_source, subj_raw, subid, sess
             )
@@ -200,15 +219,20 @@ def _process_phys(phys_list, raw_path, subid):
         # Generate tsv dataframe and copy data
         if not os.path.exists(dest_acq):
             print(f"\t Converting {sess} physio data : {task} {run}")
-            df_phys, _ = nk.read_acqknowledge(phys_file)
-            df_phys.to_csv(
-                re.sub(".acq$", ".txt", dest_acq),
-                header=False,
-                index=False,
-                sep="\t",
-            )
-            shutil.copy(phys_file, dest_orig)
-            os.rename(dest_orig, dest_acq)
+            try:
+                df_phys, _ = nk.read_acqknowledge(phys_file)
+                df_phys.to_csv(
+                    re.sub(".acq$", ".txt", dest_acq),
+                    header=False,
+                    index=False,
+                    sep="\t",
+                )
+                shutil.copy(phys_file, dest_orig)
+                os.rename(dest_orig, dest_acq)
+            except:
+                # nk throws the stupid struct.error, hence the naked catch.
+                "\t\t Insufficient data, continuing ..."
+                continue
 
 
 # %%
