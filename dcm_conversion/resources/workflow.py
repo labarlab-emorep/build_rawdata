@@ -169,6 +169,58 @@ def _process_beh(beh_list, raw_path, subid):
 
 
 # %%
+def _process_rate(rate_list, raw_path, subid):
+    """Make rest rating files for subject.
+
+    Parameters
+    ----------
+    rate_list : list
+        Paths to rest rating csv files
+    raw_path : path
+        Location of subject's rawdata directory
+    subid : str
+        Subject identifier
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    FileExistsError
+        When more thatn 2 rating files exist
+    FileNotFoundError
+        When sourcedata file is missing
+
+    """
+    # Check input
+    if len(rate_list) > 2:
+        raise FileExistsError(
+            f"Expected two rest rating files, found :\n\t{rate_list}"
+        )
+
+    # Determine session
+    for rate_path in rate_list:
+        if not os.path.exists(rate_path):
+            raise FileNotFoundError(f"Could not find file : {rate_path}")
+        rate_file = os.path.basename(rate_path)
+        sess = "ses-" + rate_file.split("ses-")[1].split("_")[0]
+
+        # Determine, setup rawdata path
+        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}/beh")
+        if not os.path.exists(subj_raw):
+            os.makedirs(subj_raw)
+
+        # Make rawdata file
+        out_file = os.path.join(
+            subj_raw, f"sub-{subid}_{sess}_rest-ratings.tsv"
+        )
+        if not os.path.exists(out_file):
+            print(f"\t Making resting rate file for {sess} ...")
+            _ = behavior.rest_ratings(rate_path, subj_raw, subid, sess)
+
+
+# %%
 def _process_phys(phys_list, raw_path, subid):
     """Copy physio files.
 
@@ -237,7 +289,14 @@ def _process_phys(phys_list, raw_path, subid):
 
 # %%
 def dcm_worflow(
-    subid, dcm_list, raw_path, deriv_dir, do_deface, beh_list, phys_list
+    subid,
+    dcm_list,
+    raw_path,
+    deriv_dir,
+    do_deface,
+    beh_list,
+    phys_list,
+    rate_list,
 ):
     """Conduct DICOM conversion worklow.
 
@@ -258,7 +317,9 @@ def dcm_worflow(
     beh_list : list
         Paths to task csv files
     phys_list : list
-        Acq files
+        Paths to acq files
+    rate_list : list
+        Paths to rest ratings csv files
 
     Returns
     -------
@@ -268,5 +329,6 @@ def dcm_worflow(
     print(f"\nProcessing data for {subid} ...")
     _process_mri(dcm_list, raw_path, deriv_dir, subid, do_deface)
     _process_beh(beh_list, raw_path, subid)
+    _process_rate(rate_list, raw_path, subid)
     _process_phys(phys_list, raw_path, subid)
     print(f"\t Done processing data for {subid}.")
