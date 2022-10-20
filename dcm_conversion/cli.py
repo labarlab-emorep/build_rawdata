@@ -116,6 +116,11 @@ def main():
         beh_list = sorted(
             glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
         )
+        rate_list = sorted(
+            glob.glob(
+                f"{source_path}/{subid}/day*/Scanner_behav/*RestRating*csv"
+            )
+        )
         phys_list = sorted(
             glob.glob(f"{source_path}/{subid}/day*/Scanner_physio/*acq")
         )
@@ -123,6 +128,7 @@ def main():
             dcm_list[0]
             beh_list[0]
             phys_list[0]
+            rate_list[0]
         except IndexError:
             print(
                 textwrap.dedent(
@@ -146,6 +152,7 @@ def main():
             do_deface,
             beh_list,
             phys_list,
+            rate_list,
         )
 
 

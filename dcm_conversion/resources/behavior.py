@@ -328,3 +328,54 @@ def events(task_file, subj_raw, subid, sess, task, run):
         json.dump(event_dict, jf)
 
     return (event_tsv, event_json)
+
+
+# %%
+def rest_ratings(rate_path, subj_raw, subid, sess):
+    """Extract participant rest-rating responses.
+
+    Parameters
+    ----------
+    rate_path : path
+        Location to rest rating csv files
+    raw_path : path
+        Location of subject's rawdata directory
+    subid : str
+        Subject identifier
+    sess : str
+        BIDs-formatted session
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned participant responses
+
+    """
+    # Read-in data, get stimulus and response
+    df_rate = pd.read_csv(rate_path, na_values="None")
+    idx_resp = df_rate.index[df_rate["type"] == "RatingResponse"].tolist()
+    rate_stim = df_rate.loc[idx_resp, "stimdescrip"].tolist()
+    rate_resp = df_rate.loc[idx_resp, "stimtype"].tolist()
+    rate_resp = ["88" if x != x else x for x in rate_resp]
+
+    # Make english responses
+    rate_map = {
+        "1": "Not At All",
+        "2": "Slightly",
+        "3": "Moderately",
+        "4": "Very",
+        "88": "NR",
+    }
+    rate_alpha = [rate_map[x] for x in rate_resp]
+
+    # Write out as dataframe
+    out_dict = {
+        "prompt": rate_stim,
+        "resp_int": rate_resp,
+        "resp_alpha": rate_alpha,
+    }
+    df_out = pd.DataFrame(out_dict)
+    df_out = df_out.sort_values(by=["prompt"], ignore_index=True)
+    out_file = os.path.join(subj_raw, f"sub-{subid}_{sess}_rest-ratings.tsv")
+    df_out.to_csv(out_file, sep="\t", index=False, na_rep="NaN")
+    return df_out
