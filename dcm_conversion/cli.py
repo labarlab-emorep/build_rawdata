@@ -110,49 +110,14 @@ def main():
         ]
         print(f"Option --sub-all envoked, processing data for:\n\t{sub_list}")
 
-    # Find each subject's source data
+    # Start workflow for each subject
     for subid in sub_list:
-        dcm_list = glob.glob(f"{source_path}/{subid}/day*/DICOM")
-        beh_list = sorted(
-            glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
-        )
-        rate_list = sorted(
-            glob.glob(
-                f"{source_path}/{subid}/day*/Scanner_behav/*RestRating*csv"
-            )
-        )
-        phys_list = sorted(
-            glob.glob(f"{source_path}/{subid}/day*/Scanner_physio/*acq")
-        )
-        try:
-            dcm_list[0]
-            beh_list[0]
-            phys_list[0]
-            rate_list[0]
-        except IndexError:
-            print(
-                textwrap.dedent(
-                    f"""
-                    DICOM directory, behavior.csv, or physio.acq file NOT
-                    detected in sourcedata of {subid}. Check directory
-                    organization.
-
-                    Skipping {subid}...
-                """
-                )
-            )
-            continue
-
-        # Start workflow
         workflow.dcm_worflow(
             subid,
-            dcm_list,
+            source_path,
             raw_path,
             deriv_dir,
             do_deface,
-            beh_list,
-            phys_list,
-            rate_list,
         )
 
 
