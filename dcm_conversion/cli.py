@@ -98,6 +98,7 @@ def main():
     source_path = os.path.join(proj_dir, "sourcedata")
 
     # Set derivatives location, write project BIDS files
+    print("\nMaking rawdata and derivatives BIDS compliant ...")
     deriv_dir = os.path.join(os.path.dirname(raw_path), "derivatives")
     for h_dir in [deriv_dir, raw_path]:
         if not os.path.exists(h_dir):
@@ -108,51 +109,18 @@ def main():
         sub_list = [
             os.path.basename(x) for x in glob.glob(f"{source_path}/ER*")
         ]
-        print(f"Option --sub-all envoked, processing data for:\n\t{sub_list}")
+        print(
+            f"\nOption --sub-all envoked, processing data for:\n\t{sub_list}"
+        )
 
-    # Find each subject's source data
+    # Start workflow for each subject
     for subid in sub_list:
-        dcm_list = glob.glob(f"{source_path}/{subid}/day*/DICOM")
-        beh_list = sorted(
-            glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
-        )
-        rate_list = sorted(
-            glob.glob(
-                f"{source_path}/{subid}/day*/Scanner_behav/*RestRating*csv"
-            )
-        )
-        phys_list = sorted(
-            glob.glob(f"{source_path}/{subid}/day*/Scanner_physio/*acq")
-        )
-        try:
-            dcm_list[0]
-            beh_list[0]
-            phys_list[0]
-            rate_list[0]
-        except IndexError:
-            print(
-                textwrap.dedent(
-                    f"""
-                    DICOM directory, behavior.csv, or physio.acq file NOT
-                    detected in sourcedata of {subid}. Check directory
-                    organization.
-
-                    Skipping {subid}...
-                """
-                )
-            )
-            continue
-
-        # Start workflow
         workflow.dcm_worflow(
             subid,
-            dcm_list,
+            source_path,
             raw_path,
             deriv_dir,
             do_deface,
-            beh_list,
-            phys_list,
-            rate_list,
         )
 
 
