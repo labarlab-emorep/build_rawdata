@@ -98,6 +98,7 @@ def main():
     source_path = os.path.join(proj_dir, "sourcedata")
 
     # Set derivatives location, write project BIDS files
+    print("\nMaking rawdata and derivatives BIDS compliant ...")
     deriv_dir = os.path.join(os.path.dirname(raw_path), "derivatives")
     for h_dir in [deriv_dir, raw_path]:
         if not os.path.exists(h_dir):
@@ -108,7 +109,9 @@ def main():
         sub_list = [
             os.path.basename(x) for x in glob.glob(f"{source_path}/ER*")
         ]
-        print(f"Option --sub-all envoked, processing data for:\n\t{sub_list}")
+        print(
+            f"\nOption --sub-all envoked, processing data for:\n\t{sub_list}"
+        )
 
     # Start workflow for each subject
     for subid in sub_list:

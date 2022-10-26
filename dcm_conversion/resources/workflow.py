@@ -1,4 +1,5 @@
 """Coordinate modules into workflow."""
+# %%
 import os
 import re
 import glob
@@ -9,6 +10,7 @@ import neurokit2 as nk
 from dcm_conversion.resources import process, bidsify, behavior
 
 
+# %%
 def _split(sess_task, subid):
     """Split string for session and task.
 
@@ -69,6 +71,8 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
     None
 
     """
+    print("\tProcessing MRI data ...")
+
     # Identify DICOM locations, verify
     dcm_list = sorted(glob.glob(f"{source_path}/{subid}/day*/DICOM"))
     if not dcm_list:
@@ -86,11 +90,14 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
         if not sess:
             continue
 
-        # Check for data
+        # Check for DICOMs
         try:
             glob.glob(f"{subj_source}/**/*.dcm", recursive=True)[0]
         except IndexError:
-            print(f"\tNo DICOMs detected for sub-{subid}, {sess}. Skipping.")
+            print(
+                "\tNo properly organized DICOMs detected for "
+                + f"sub-{subid}, {sess}. Skipping."
+            )
             continue
 
         # Setup subject rawdata, run dcm2niix
@@ -102,25 +109,33 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
         t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
         if not t1_list:
 
-            # Organize DICOMs, check
-            print(f"\t Organizing DICOMs for sub-{subid}, {sess} ...")
-            sh_run = sp.Popen(
-                f"org_dcms.sh -d {subj_source}",
-                shell=True,
-                stdout=sp.PIPE,
-                stderr=sp.PIPE,
-            )
-            sh_out, sh_err = sh_run.communicate()
-            sh_run.wait()
+            # Organize DICOMs if needed
             check_dir = os.path.join(subj_source, "EmoRep_anat")
             if not os.path.exists(check_dir):
-                print(sh_out, sh_err)
+                print(f"\tOrganizing DICOMs for sub-{subid}, {sess} ...")
+                sh_run = sp.Popen(
+                    f"org_dcms.sh -d {subj_source}",
+                    shell=True,
+                    stdout=sp.PIPE,
+                    stderr=sp.PIPE,
+                )
+                sh_out, sh_err = sh_run.communicate()
+                sh_run.wait()
+
+            # Check that organization happened
+            if not os.path.exists(check_dir):
                 raise FileNotFoundError(
-                    "Missing expected output of bin/org_dcms.sh"
+                    f"""Missing expected output of bin/org_dcms.sh, see below.
+
+                    orgs_dcm.sh stdout:
+                        {sh_out.decode("utf-8")}
+                    orgs_dcm.sh stderr:
+                        {sh_err.decode("utf-8")}
+                    """
                 )
 
             # Run dcm2niix, bidsify
-            print(f"\t Converting DICOMs for sub-{subid}, {sess} ...")
+            print(f"\tConverting DICOMs for sub-{subid}, {sess} ...")
             nii_list, json_list = process.dcm2niix(
                 subj_source, subj_raw, subid, sess
             )
@@ -151,6 +166,8 @@ def _process_beh(source_path, raw_path, subid):
     None
 
     """
+    print("\tProcessing task behavior data ...")
+
     # Set session, task name map
     task_switch = {
         "movies": "scannermovieData",
@@ -160,7 +177,10 @@ def _process_beh(source_path, raw_path, subid):
     # Check for Scanner_behav dir
     task_list = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_behav"))
     if not task_list:
-        print(f"\tNo task files detected for sub-{subid}. Skipping.")
+        print(
+            "\tNo properly organized task files detected for "
+            + f"sub-{subid}. Skipping."
+        )
         return
 
     # Create events files for all task runs
@@ -175,35 +195,37 @@ def _process_beh(source_path, raw_path, subid):
         return
     for task_path in beh_list:
 
-        # Check that file is in correct location
+        # Check that file is in correct location, deal with different
+        # naming conventions.
         day = os.path.basename(os.path.dirname(os.path.dirname(task_path)))
         task = day.split("_")[1]
         task_file = os.path.basename(task_path)
         try:
-            _, chk_task, chk_subid, chk_sess, _, _ = task_file.split("_")
+            _, chk_task, h_subid, h_sess, _, _ = task_file.split("_")
         except ValueError:
             print(
-                f"ERROR: Improperly named task file : {task_file}. "
-                + "Skipping."
+                f"ERROR: Improperly named task file : {task_file}s "
+                + "skipping."
             )
             continue
         if chk_task != task_switch[task]:
             print(
                 f"\tERROR: Mismatch of task file '{chk_task}' with "
-                + f"session '{day}'. Skipping."
+                + f"session '{day}', skipping."
             )
             continue
+        chk_subid = h_subid[4:] if "sub" in h_subid else h_subid
         if chk_subid != subid:
             print(
                 f"\tERROR: Task file for subject '{chk_subid}' found "
-                + "in wrong location : "
-                + f"{source_path}/{subid}/{day}/Scanner_behav. Skipping."
+                + f"in sourcedata/{subid}/{day}/Scanner_behav, skipping."
             )
             continue
-        if chk_sess[3:] != day:
+        chk_sess = h_sess[4:] if "-" in h_sess else h_sess[3:]
+        if chk_sess != day[:4]:
             print(
-                f"\tERROR: File for '{chk_sess[3:]}' found in "
-                + f"session : {day}. Skipping."
+                f"\tERROR: File for '{chk_sess}' found in "
+                + f"session '{day}', skipping."
             )
             continue
 
@@ -254,10 +276,15 @@ def _process_rate(source_path, raw_path, subid):
         When sourcedata file is missing
 
     """
+    print("\tProcessing rest rating data ...")
+
     # Check for Scanner_behav dir
     task_list = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_behav"))
     if not task_list:
-        print(f"\tNo task files detected for sub-{subid}. Skipping.")
+        print(
+            "\tNo properly organized rest rating files detected "
+            + f"for sub-{subid}, skipping."
+        )
         return
 
     # Check rest rating files
@@ -266,12 +293,15 @@ def _process_rate(source_path, raw_path, subid):
     )
     if not rate_list:
         print(
-            "\tNo properly organized task files detected for "
-            + f"sub-{subid}. Skipping."
+            "\tNo properly organized rest rating files detected for "
+            + f"sub-{subid}, skipping."
         )
         return
     elif len(rate_list) > 2:
-        print(f"Expected two rest rating files, found :\n\t{rate_list}")
+        print(
+            f"\tExpected two rest rating files, found :\n\t{rate_list},"
+            + " skipping"
+        )
         return
 
     # Convert all rest ratings
@@ -281,24 +311,23 @@ def _process_rate(source_path, raw_path, subid):
         day = os.path.basename(os.path.dirname(os.path.dirname(rate_path)))
         rate_file = os.path.basename(rate_path)
         try:
-            _, _, chk_subid, chk_sess, _, _ = rate_file.split("_")
+            _, _, chk_subid, chk_sess, _ = rate_file.split("_")
         except ValueError:
             print(
-                f"ERROR: Improperly named rating file : {rate_file}. "
-                + "Skipping."
+                f"\tERROR: Improperly named rating file : {rate_file}, "
+                + "skipping."
             )
             continue
-        if chk_subid[3:] != subid:
+        if chk_subid[4:] != subid:
             print(
                 f"\tERROR: Rating file for subject '{chk_subid}' found "
-                + "in wrong location : "
-                + f"{source_path}/{subid}/{day}/Scanner_behav. Skipping."
+                + f"in sourcedata/{subid}/{day}/Scanner_behav, skipping."
             )
             continue
-        if chk_sess[3:] != day[:4]:
+        if chk_sess[4:] != day[:4]:
             print(
-                f"\tERROR: File for '{chk_sess[3:]}' found in "
-                + f"session : {day}. Skipping."
+                f"\tERROR: File for '{chk_sess[4:]}' found in "
+                + f"session : {day}, skipping."
             )
             continue
 
@@ -341,10 +370,12 @@ def _process_phys(source_path, raw_path, subid):
     None
 
     """
+    print("\tProcessing physio data ...")
+
     # Check for Scanner_physio dir
     phys_dirs = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_physio"))
     if not phys_dirs:
-        print(f"\tNo physio files detected for sub-{subid}. Skipping.")
+        print(f"\tNo physio files detected for sub-{subid}, skipping.")
         return
 
     # Convert all physio files
@@ -354,33 +385,34 @@ def _process_phys(source_path, raw_path, subid):
     if not phys_list:
         print(
             "\tNo properly organized physio files detected for "
-            + f"sub-{subid}. Skipping."
+            + f"sub-{subid}, skipping."
         )
         return
     for phys_path in phys_list:
 
-        # Check that file is in correct location
+        # Check that file is in correct location, account for
+        # different naming conventions.
         day = os.path.basename(os.path.dirname(os.path.dirname(phys_path)))
         phys_file = os.path.basename(phys_path)
         try:
-            chk_subid, chk_day, _, _ = phys_file.split("_")
+            chk_subid, chk_a, chk_b, _ = phys_file.split("_")
         except ValueError:
             print(
-                f"ERROR: Improperly named physio file : {phys_file}. "
-                + "Skipping."
+                f"ERROR: Improperly named physio file : {phys_file}, "
+                + "skipping."
             )
             continue
         if chk_subid != subid:
             print(
                 f"\tERROR: Physio file for subject '{chk_subid}' found "
-                + "in wrong location : "
-                + f"{source_path}/{subid}/{day}/Scanner_physio. Skipping."
+                + f"in sourcedata/{subid}/{day}/Scanner_physio, skipping."
             )
             continue
+        chk_day = chk_a if "day" in chk_a else chk_b
         if chk_day != day[:4]:
             print(
                 f"\tERROR: File for '{chk_day}' found in "
-                + f"session : {day}. Skipping."
+                + f"session : {day}, skipping."
             )
             continue
 
@@ -458,16 +490,22 @@ def dcm_worflow(
     None
 
     """
+    from fnmatch import fnmatch
+
+    print(f"\nProcessing data for {subid} ...")
     # Identify sessions
     subj_source = os.path.join(source_path, subid)
-    sess_list = os.listdir(subj_source)
+    sess_list = [x for x in os.listdir(subj_source) if fnmatch(x, "day*")]
     if not sess_list:
-        print(f"No sourcedata session directories detected : {subid}")
+        print(
+            "\tNo sourcedata properly named session directories "
+            + "detected, skipping."
+        )
         return
 
     # Check organization of each session
+    print("\tChecking sourcedata session names ...")
     for sess in sess_list:
-        print(f"Checking sourcedata file structure : {subid}, {sess}")
         try:
             day, task = sess.split("_")
         except ValueError:
@@ -483,7 +521,6 @@ def dcm_worflow(
             )
             return
 
-    print(f"\nProcessing data for {subid} ...")
     _process_mri(source_path, raw_path, deriv_dir, subid, do_deface)
     _process_beh(source_path, raw_path, subid)
     _process_rate(source_path, raw_path, subid)
