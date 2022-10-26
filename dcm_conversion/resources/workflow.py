@@ -5,6 +5,7 @@ import re
 import glob
 import shutil
 import subprocess as sp
+from fnmatch import fnmatch
 import bioread  # left here for generatings requirements files
 import neurokit2 as nk
 from dcm_conversion.resources import process, bidsify, behavior
@@ -56,7 +57,8 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
 
     Parameters
     ----------
-
+    source_path : path
+        Location of project sourcedata
     raw_path : path
         Location of subject's rawdata
     deriv_dir : path
@@ -82,6 +84,7 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
         )
         return
 
+    # Organize and convert data from all dicoms
     for subj_source in dcm_list:
 
         # Setup sess, task strings
@@ -155,7 +158,8 @@ def _process_beh(source_path, raw_path, subid):
 
     Parameters
     ----------
-
+    source_path : path
+        Location of project sourcedata
     raw_path : path
         Location of subject's rawdata directory
     subid : str
@@ -258,7 +262,8 @@ def _process_rate(source_path, raw_path, subid):
 
     Parameters
     ----------
-
+    source_path : path
+        Location of project sourcedata
     raw_path : path
         Location of subject's rawdata directory
     subid : str
@@ -359,7 +364,8 @@ def _process_phys(source_path, raw_path, subid):
 
     Parameters
     ----------
-
+    source_path : path
+        Location of project sourcedata
     raw_path : path
         Location of project rawdata
     subid : str
@@ -490,8 +496,6 @@ def dcm_worflow(
     None
 
     """
-    from fnmatch import fnmatch
-
     print(f"\nProcessing data for {subid} ...")
     # Identify sessions
     subj_source = os.path.join(source_path, subid)
