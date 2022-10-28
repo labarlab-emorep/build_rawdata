@@ -353,8 +353,9 @@ def rest_ratings(rate_path, subj_raw, subid, sess):
     """
     # Read-in data, get stimulus and response
     df_rate = pd.read_csv(rate_path, na_values="None")
+    idx_stim = df_rate.index[df_rate["type"] == "RatingOnset"].tolist()
     idx_resp = df_rate.index[df_rate["type"] == "RatingResponse"].tolist()
-    rate_stim = df_rate.loc[idx_resp, "stimdescrip"].tolist()
+    rate_stim = df_rate.loc[idx_stim, "stimdescrip"].tolist()
     rate_resp = df_rate.loc[idx_resp, "stimtype"].tolist()
     rate_resp = ["88" if x != x else x for x in rate_resp]
 
