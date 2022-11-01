@@ -6,6 +6,7 @@ import glob
 import shutil
 import subprocess as sp
 from fnmatch import fnmatch
+from datetime import datetime
 import bioread  # left here for generatings requirements files
 import neurokit2 as nk
 from dcm_conversion.resources import process, bidsify, behavior
@@ -316,7 +317,7 @@ def _process_rate(source_path, raw_path, subid):
         day = os.path.basename(os.path.dirname(os.path.dirname(rate_path)))
         rate_file = os.path.basename(rate_path)
         try:
-            _, _, chk_subid, chk_sess, _ = rate_file.split("_")
+            _, _, chk_subid, chk_sess, date_ext = rate_file.split("_")
         except ValueError:
             print(
                 f"\tERROR: Improperly named rating file : {rate_file}, "
@@ -345,13 +346,20 @@ def _process_rate(source_path, raw_path, subid):
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
 
+        # Clean file date
+        h_date = date_ext.split(".")[0]
+        date_time = datetime.strptime(h_date, "%m%d%Y")
+        date_str = datetime.strftime(date_time, "%Y-%m-%d")
+
         # Make rawdata file
         out_file = os.path.join(
-            subj_raw, f"sub-{subid}_{sess}_rest-ratings.tsv"
+            subj_raw, f"sub-{subid}_{sess}_rest-ratings_{date_str}.tsv"
         )
         if not os.path.exists(out_file):
             print(f"\t Making resting rate file for {sess} ...")
-            _ = behavior.rest_ratings(rate_path, subj_raw, subid, sess)
+            _ = behavior.rest_ratings(
+                rate_path, subj_raw, subid, sess, out_file
+            )
 
 
 # %%

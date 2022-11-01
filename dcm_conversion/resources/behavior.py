@@ -331,19 +331,21 @@ def events(task_file, subj_raw, subid, sess, task, run):
 
 
 # %%
-def rest_ratings(rate_path, subj_raw, subid, sess):
+def rest_ratings(rate_path, subj_raw, subid, sess, out_file):
     """Extract participant rest-rating responses.
 
     Parameters
     ----------
     rate_path : path
         Location to rest rating csv files
-    raw_path : path
+    subj_raw : path
         Location of subject's rawdata directory
     subid : str
         Subject identifier
     sess : str
         BIDs-formatted session
+    out_file : str
+        Path, name of output file
 
     Returns
     -------
@@ -377,6 +379,5 @@ def rest_ratings(rate_path, subj_raw, subid, sess):
     }
     df_out = pd.DataFrame(out_dict)
     df_out = df_out.sort_values(by=["prompt"], ignore_index=True)
-    out_file = os.path.join(subj_raw, f"sub-{subid}_{sess}_rest-ratings.tsv")
     df_out.to_csv(out_file, sep="\t", index=False, na_rep="NaN")
     return df_out
