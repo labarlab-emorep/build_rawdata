@@ -363,7 +363,7 @@ def _process_rate(source_path, raw_path, subid):
 
 
 # %%
-def _process_phys(source_path, raw_path, subid):
+def _process_phys(source_path, raw_path, deriv_dir, subid):
     """Copy physio files.
 
     Rename physio files to BIDS convention, organize them
@@ -376,6 +376,8 @@ def _process_phys(source_path, raw_path, subid):
         Location of project sourcedata
     raw_path : path
         Location of project rawdata
+    deriv_dir : path
+        Location of derivatives directory
     subid : str
         Subject identifier
 
@@ -446,8 +448,12 @@ def _process_phys(source_path, raw_path, subid):
 
         # Setup output dir/name
         subj_phys = os.path.join(raw_path, f"sub-{subid}/{sess}/phys")
-        if not os.path.exists(subj_phys):
-            os.makedirs(subj_phys)
+        subj_deriv = os.path.join(
+            deriv_dir, "scr_autonomate", f"sub-{subid}/{sess}"
+        )
+        for h_dir in [subj_phys, subj_deriv]:
+            if not os.path.exists(h_dir):
+                os.makedirs(h_dir)
         dest_orig = os.path.join(subj_phys, os.path.basename(phys_path))
         dest_acq = os.path.join(
             subj_phys,
@@ -536,5 +542,5 @@ def dcm_worflow(
     _process_mri(source_path, raw_path, deriv_dir, subid, do_deface)
     _process_beh(source_path, raw_path, subid)
     _process_rate(source_path, raw_path, subid)
-    _process_phys(source_path, raw_path, subid)
+    _process_phys(source_path, raw_path, deriv_dir, subid)
     print(f"\t Done processing data for {subid}.")
