@@ -2,6 +2,7 @@
 
 Construct BIDS events sidecar and json files
 for fMRI data.
+
 """
 import os
 import json
@@ -76,7 +77,22 @@ class _EventsData:
         self.events_df = pd.DataFrame(columns=events_cols)
 
     def _stim_info(self, event_name, idx_onset):
-        """Conditionally get event stimulus info."""
+        """Conditionally get event stimulus info.
+
+        Parameters
+        ----------
+        event_name : str
+            User-specified event name, for trial_type
+        idx_onset : list
+            Indices where self.run_df["type"] has the onset string
+
+        Returns
+        -------
+        tuple
+            [0] = list of event-specific stimulus info
+            [1] = list of stimulus emotion, or not applicable
+
+        """
         # Setup string switch for certain events
         stim_switch = {
             "fixS": "fixation_cross",
@@ -106,7 +122,19 @@ class _EventsData:
         return (h_stim_info, h_stim_emo)
 
     def _judge_resp(self):
-        """Get and parse judgment responses."""
+        """Get and parse judgment responses.
+
+        Deals with differing captures of JudgeResponse between
+        movie and scenario versions of task.
+
+        Returns
+        -------
+        triple
+            [0] = list of judgment response indices
+            [1] = list of judgment resposnes
+            [2] = list of judgment accuracies
+
+        """
         idx_jud_resp = self.run_df.index[
             self.run_df["type"] == "JudgeResponse"
         ].tolist()
@@ -124,7 +152,27 @@ class _EventsData:
         return (idx_jud_resp, jud_resp, jud_acc)
 
     def _resp_time(self, event_name, event_onset, idx_onset, idx_offset):
-        """Conditionally get response, response time."""
+        """Conditionally get response, response time.
+
+        Parameters
+        ----------
+        event_name : str
+            User-specified event name, for trial_type
+        event_onset : list
+            Start times from self.run_df["timefromstart"]
+        idx_onset : list
+            Indices where self.run_df["type"] has the onset string
+        idx_offset : list
+            Indices where self.run_df["type"] has the offset string
+
+        Returns
+        -------
+        tuple
+            [0] = list of participant event responses, or not applicable
+            [1] = list of participant event response times, or
+                    not applicable
+
+        """
         if event_name in ["emotion", "intensity"]:
             h_resp = self.run_df.loc[idx_offset, "stimdescrip"].tolist()
             h_resp_time = self.run_df.loc[idx_offset, "timefromstart"].tolist()
@@ -155,6 +203,11 @@ class _EventsData:
             Event onset indicator
         event_off : str
             Event offset indicator
+
+        Notes
+        -----
+        Updates (appends)self.events_df with event-specific information, then
+        sorts by onset time.
 
         """
         # Get index of event onset and offset

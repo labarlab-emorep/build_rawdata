@@ -12,9 +12,9 @@ Examples
 --------
 dcm_conversion --sub-all --deface
 
-python dcm_conversion/cli.py \
+dcm_conversion \
     --sub-list ER0009 ER0016 \
-    --raw-dir /mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS/rawdata \
+    --raw-dir /path/to/project/bids/rawdata \
     --deface
 
 """
@@ -115,7 +115,7 @@ def main():
 
     # Start workflow for each subject
     for subid in sub_list:
-        workflow.dcm_worflow(
+        _ = workflow.dcm_worflow(
             subid,
             source_path,
             raw_path,

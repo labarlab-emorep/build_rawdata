@@ -8,6 +8,7 @@ Notes
 -----
 Assumes flat DICOM organization.
 Assumes T1w exist for each session.
+
 """
 import os
 import glob
@@ -129,6 +130,7 @@ def deface(t1_list, deriv_dir, subid, sess):
     ------
     FileNotFoundError
         If defaced file not detected
+
     """
     # Setup subject deface derivatives dir
     subj_deriv = os.path.join(deriv_dir, "deface", f"sub-{subid}", sess)

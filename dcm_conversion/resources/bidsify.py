@@ -3,6 +3,7 @@
 Notes
 -----
 BIDS file naming is EmoRep specific (_switch_name).
+
 """
 import os
 import glob

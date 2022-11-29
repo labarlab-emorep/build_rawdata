@@ -56,6 +56,11 @@ def _split(sess_task, subid):
 def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
     """Convert DICOMs for subject.
 
+    Validate organization scheme of DICOM dir, organize DICOMs
+    according to their "0008 103e" field, use dcm2niix to generate
+    NIfTI files and setup/writeout to rawdata. BIDs-organize rawdata,
+    and also deface anat files for NDAR uploads.
+
     Parameters
     ----------
     source_path : path
@@ -71,7 +76,13 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
 
     Returns
     -------
-    None
+    None, True
+        None = participant does not have properly-organized DICOMs
+        True = all processing occured successfully
+
+    Notes
+    -----
+    Skips participant if DICOMs are not detected or properly organized.
 
     """
     print("\tProcessing MRI data ...")
@@ -152,10 +163,15 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
             _ = process.deface(t1_list, deriv_dir, subid, sess)
         print("\t Done!")
 
+    return True
+
 
 # %%
 def _process_beh(source_path, raw_path, subid):
     """Make events files for subject.
+
+    Validate organization of Scanner_behav then generate BIDS-compliant
+    events tsv and json files for the movie and scenario tasks.
 
     Parameters
     ----------
@@ -168,7 +184,15 @@ def _process_beh(source_path, raw_path, subid):
 
     Returns
     -------
-    None
+    None, True
+        None = participant does not have properly-organized behavior data
+        True = all processing occured successfully
+
+    Notes
+    -----
+    Skips participant if task files are not detected or properly organized,
+    named incorrectly, located in the wrong session, are from the wrong
+    participant, or located in the wrong task.
 
     """
     print("\tProcessing task behavior data ...")
@@ -256,10 +280,15 @@ def _process_beh(source_path, raw_path, subid):
             print(f"\t Making events file for {task}, {run} ...")
             _, _ = behavior.events(task_path, subj_raw, subid, sess, task, run)
 
+    return True
+
 
 # %%
 def _process_rate(source_path, raw_path, subid):
     """Make rest rating files for subject.
+
+    Validate organization of resting state ratings then generates a
+    BIDsy tsv in rawdata/subj/sess/beh of participant responses.
 
     Parameters
     ----------
@@ -272,7 +301,9 @@ def _process_rate(source_path, raw_path, subid):
 
     Returns
     -------
-    None
+    None, True
+        None = participant does not have properly-organized rest resposnes
+        True = all processing occured successfully
 
     Raises
     ------
@@ -280,6 +311,12 @@ def _process_rate(source_path, raw_path, subid):
         When more thatn 2 rating files exist
     FileNotFoundError
         When sourcedata file is missing
+
+    Notes
+    -----
+    Skips participant if rest files are not detected or properly organized,
+    named incorrectly, located in the wrong session, or are from the wrong
+    participant.
 
     """
     print("\tProcessing rest rating data ...")
@@ -361,6 +398,8 @@ def _process_rate(source_path, raw_path, subid):
                 rate_path, subj_raw, subid, sess, out_file
             )
 
+    return True
+
 
 # %%
 def _process_phys(source_path, raw_path, deriv_dir, subid):
@@ -368,7 +407,8 @@ def _process_phys(source_path, raw_path, deriv_dir, subid):
 
     Rename physio files to BIDS convention, organize them
     within subject session directories. Generate a tsv with
-    txt extension for Autonomate.
+    txt extension for Autonomate with values rounded to 6
+    decimals. Validate organization.
 
     Parameters
     ----------
@@ -383,7 +423,15 @@ def _process_phys(source_path, raw_path, deriv_dir, subid):
 
     Returns
     -------
-    None
+    None, True
+        None = participant does not have properly-organized physio data
+        True = all processing occured successfully
+
+    Notes
+    -----
+    Skips participant if physio files are not detected or properly organized,
+    named incorrectly, located in the wrong session, or are from the wrong
+    participant.
 
     """
     print("\tProcessing physio data ...")
@@ -479,6 +527,8 @@ def _process_phys(source_path, raw_path, deriv_dir, subid):
                 "\t\t Insufficient data, continuing ..."
                 continue
 
+    return True
+
 
 # %%
 def dcm_worflow(
@@ -492,6 +542,7 @@ def dcm_worflow(
 
     Coordinate resources for MRI conversion, BIDSification,
     generating events sidecars, and moving physio data.
+    Validate organization of sourcedata.
 
     Parameters
     ----------
@@ -508,7 +559,14 @@ def dcm_worflow(
 
     Returns
     -------
-    None
+    None, True
+        None = Improper organization detected
+        True = all processing finished successfully
+
+    Notes
+    -----
+    Skips participant sourcedata is not setup or session directories
+    are improperly named.
 
     """
     print(f"\nProcessing data for {subid} ...")
@@ -540,8 +598,9 @@ def dcm_worflow(
             )
             return
 
-    _process_mri(source_path, raw_path, deriv_dir, subid, do_deface)
-    _process_beh(source_path, raw_path, subid)
-    _process_rate(source_path, raw_path, subid)
-    _process_phys(source_path, raw_path, deriv_dir, subid)
+    _ = _process_mri(source_path, raw_path, deriv_dir, subid, do_deface)
+    _ = _process_beh(source_path, raw_path, subid)
+    _ = _process_rate(source_path, raw_path, subid)
+    _ = _process_phys(source_path, raw_path, deriv_dir, subid)
     print(f"\t Done processing data for {subid}.")
+    return True
