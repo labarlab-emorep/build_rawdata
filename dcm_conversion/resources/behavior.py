@@ -2,6 +2,7 @@
 
 Construct BIDS events sidecar and json files
 for fMRI data.
+
 """
 import os
 import json
@@ -24,7 +25,7 @@ class _EventsData:
     task_file : path
         Location of task csv file for run
     resp_na : str
-        Not applicable indecator
+        "Not applicable" indicator
         (default : "n/a")
 
     Attributes
@@ -34,15 +35,13 @@ class _EventsData:
     resp_na : str
         Not applicable indencator
         (default : "n/a")
-    event_cols : list
-        BIDS events header values (column names)
     events_df : pd.DataFrame
         Extracted BIDS events info
 
     """
 
     def __init__(self, task_file, resp_na="n/a"):
-        """Read-in data and setup output dataframe.
+        """Read-in data and start output dataframe.
 
         Parameters
         ----------
@@ -51,6 +50,16 @@ class _EventsData:
         resp_na : str
             Not applicable indecator
             (default : "n/a")
+
+        Attributes
+        ----------
+        run_df : pd.DataFrame
+            Task info from run file
+        resp_na : str
+            Not applicable indencator
+            (default : "n/a")
+        events_df : pd.DataFrame
+            Extracted BIDS events info
 
         """
         self.run_df = pd.read_csv(task_file, na_values=["None", "none"])
@@ -63,11 +72,27 @@ class _EventsData:
             "response",
             "response_time",
             "accuracy",
+            "emotion",
         ]
         self.events_df = pd.DataFrame(columns=events_cols)
 
     def _stim_info(self, event_name, idx_onset):
-        """Conditionally get event stimulus info."""
+        """Conditionally get event stimulus info.
+
+        Parameters
+        ----------
+        event_name : str
+            User-specified event name, for trial_type
+        idx_onset : list
+            Indices where self.run_df["type"] has the onset string
+
+        Returns
+        -------
+        tuple
+            [0] = list of event-specific stimulus info
+            [1] = list of stimulus emotion, or not applicable
+
+        """
         # Setup string switch for certain events
         stim_switch = {
             "fixS": "fixation_cross",
@@ -88,10 +113,28 @@ class _EventsData:
         else:
             h_stim_info = np.repeat(self.resp_na, len(idx_onset)).tolist()
 
-        return h_stim_info
+        # Split movie, scenario names to capture emotion
+        if event_name in ["movie", "scenario"]:
+            h_stim_emo = [x.split("_")[0] for x in h_stim_info]
+        else:
+            h_stim_emo = np.repeat(self.resp_na, len(h_stim_info)).tolist()
+
+        return (h_stim_info, h_stim_emo)
 
     def _judge_resp(self):
-        """Get and parse judgment responses."""
+        """Get and parse judgment responses.
+
+        Deals with differing captures of JudgeResponse between
+        movie and scenario versions of task.
+
+        Returns
+        -------
+        triple
+            [0] = list of judgment response indices
+            [1] = list of judgment resposnes
+            [2] = list of judgment accuracies
+
+        """
         idx_jud_resp = self.run_df.index[
             self.run_df["type"] == "JudgeResponse"
         ].tolist()
@@ -109,7 +152,27 @@ class _EventsData:
         return (idx_jud_resp, jud_resp, jud_acc)
 
     def _resp_time(self, event_name, event_onset, idx_onset, idx_offset):
-        """Conditionally get response, response time."""
+        """Conditionally get response, response time.
+
+        Parameters
+        ----------
+        event_name : str
+            User-specified event name, for trial_type
+        event_onset : list
+            Start times from self.run_df["timefromstart"]
+        idx_onset : list
+            Indices where self.run_df["type"] has the onset string
+        idx_offset : list
+            Indices where self.run_df["type"] has the offset string
+
+        Returns
+        -------
+        tuple
+            [0] = list of participant event responses, or not applicable
+            [1] = list of participant event response times, or
+                    not applicable
+
+        """
         if event_name in ["emotion", "intensity"]:
             h_resp = self.run_df.loc[idx_offset, "stimdescrip"].tolist()
             h_resp_time = self.run_df.loc[idx_offset, "timefromstart"].tolist()
@@ -130,16 +193,21 @@ class _EventsData:
         """Mine task file for events info.
 
         Extact values to fill self.events_df for the columns found
-        in self.events_cols. Extracts values based on input parameters.
+        in events_cols. Extracts values based on input parameters.
 
         Parameters
         ----------
         event_name : str
             User-specified event name, for trial_type
         event_on : str
-            Event onset indecator
+            Event onset indicator
         event_off : str
-            Event offset indecator
+            Event offset indicator
+
+        Notes
+        -----
+        Updates (appends)self.events_df with event-specific information, then
+        sorts by onset time.
 
         """
         # Get index of event onset and offset
@@ -159,7 +227,9 @@ class _EventsData:
         event_trial_type = np.repeat(event_name, len(idx_onset)).tolist()
 
         # Get stimulus info for event
-        event_stim_info = self._stim_info(event_name, idx_onset)
+        event_stim_info, event_stim_emo = self._stim_info(
+            event_name, idx_onset
+        )
 
         # Determine response and response time
         event_response, event_response_time = self._resp_time(
@@ -181,6 +251,7 @@ class _EventsData:
             "response": event_response,
             "response_time": event_response_time,
             "accuracy": event_accuracy,
+            "emotion": event_stim_emo,
         }
         df_event = pd.DataFrame(event_dict, columns=event_dict.keys())
         del event_dict
@@ -309,6 +380,11 @@ def events(task_file, subj_raw, subid, sess, task, run):
                 "correct": "Response was correct",
                 "wrong": "Response was incorrect",
             },
+        },
+        "emotion": {
+            "LongName": "Emotion category of stimulus",
+            "Description": "Intended emotion the movie or scenario "
+            + "was designed to elicit",
         },
     }
 

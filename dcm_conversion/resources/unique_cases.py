@@ -3,6 +3,7 @@
 Inevitably some participants will have idiosyncratic data,
 or a protocol will change, resulting in special cases that
 need to be treated specially by the package.
+
 """
 
 
@@ -31,6 +32,7 @@ def wash_issue(trial_types, task, sess, subid):
     trial_types : dict
         Updated wash values if subid is found in the issue_list,
         otherwise returns the same trial_types as wash_issue received.
+
     """
 
     # List subjects who only need ses-day2 patched
