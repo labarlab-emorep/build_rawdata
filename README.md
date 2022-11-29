@@ -6,8 +6,9 @@ This in-house python package is written for the EmoRep project, intended to be e
 - Convert DICOMs to NIfTI format
 - Organize directories and file names according BIDS specifications
 - Generate events sidecar and JSON files for EmoRep task
+- Generate dataframe for rest ratings task
 - Update fmap sidecar with "IntendedFor" field
-- Copy physio data to rawdata
+- Copy physio data to rawdata, and generate a txt version for Autonomate
 
 ## Usage
 - Install to local python environment `$ python setup.py install --record record.txt` 
