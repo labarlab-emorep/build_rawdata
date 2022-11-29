@@ -465,6 +465,7 @@ def _process_phys(source_path, raw_path, deriv_dir, subid):
             print(f"\t Converting {sess} physio data : {task} {run}")
             try:
                 df_phys, _ = nk.read_acqknowledge(phys_path)
+                df_phys = df_phys.round(6)
                 df_phys.to_csv(
                     re.sub(".acq$", ".txt", dest_acq),
                     header=False,
