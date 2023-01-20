@@ -18,25 +18,17 @@ class _EventsData:
     Extract specified values from task csv files to construct
     BIDS events sidecars for func data.
 
-    Written for EmoRep movies and scenarious tasks.
-
-    Parameters
-    ----------
-    task_file : path
-        Location of task csv file for run
-    resp_na : str
-        "Not applicable" indicator
-        (default : "n/a")
+    Written for EmoRep movies and scenarios tasks.
 
     Attributes
     ----------
-    run_df : pd.DataFrame
-        Task info from run file
-    resp_na : str
-        Not applicable indencator
-        (default : "n/a")
-    events_df : pd.DataFrame
+    df_events : pd.DataFrame
         Extracted BIDS events info
+
+    Methods
+    -------
+    get_info(event_name, event_on, event_off)
+        Extract information for a certain event type
 
     """
 
@@ -53,17 +45,16 @@ class _EventsData:
 
         Attributes
         ----------
-        run_df : pd.DataFrame
-            Task info from run file
-        resp_na : str
-            Not applicable indencator
-            (default : "n/a")
-        events_df : pd.DataFrame
+        df_events : pd.DataFrame
             Extracted BIDS events info
+        _df_run : pd.DataFrame
+            Task info from run file
+        _resp_na : str
+            Not applicable indecator
 
         """
-        self.run_df = pd.read_csv(task_file, na_values=["None", "none"])
-        self.resp_na = resp_na
+        self._df_run = pd.read_csv(task_file, na_values=["None", "none"])
+        self._resp_na = resp_na
         events_cols = [
             "onset",
             "duration",
@@ -74,7 +65,7 @@ class _EventsData:
             "accuracy",
             "emotion",
         ]
-        self.events_df = pd.DataFrame(columns=events_cols)
+        self.df_events = pd.DataFrame(columns=events_cols)
 
     def _stim_info(self, event_name, idx_onset):
         """Conditionally get event stimulus info.
@@ -84,7 +75,7 @@ class _EventsData:
         event_name : str
             User-specified event name, for trial_type
         idx_onset : list
-            Indices where self.run_df["type"] has the onset string
+            Indices where self._df_run["type"] has the onset string
 
         Returns
         -------
@@ -109,15 +100,15 @@ class _EventsData:
                 stim_switch[event_name], len(idx_onset)
             ).tolist()
         elif event_name in ["movie", "scenario", "wash"]:
-            h_stim_info = self.run_df.loc[idx_onset, "stimdescrip"].tolist()
+            h_stim_info = self._df_run.loc[idx_onset, "stimdescrip"].tolist()
         else:
-            h_stim_info = np.repeat(self.resp_na, len(idx_onset)).tolist()
+            h_stim_info = np.repeat(self._resp_na, len(idx_onset)).tolist()
 
         # Split movie, scenario names to capture emotion
         if event_name in ["movie", "scenario"]:
             h_stim_emo = [x.split("_")[0] for x in h_stim_info]
         else:
-            h_stim_emo = np.repeat(self.resp_na, len(h_stim_info)).tolist()
+            h_stim_emo = np.repeat(self._resp_na, len(h_stim_info)).tolist()
 
         return (h_stim_info, h_stim_emo)
 
@@ -135,10 +126,10 @@ class _EventsData:
             [2] = list of judgment accuracies
 
         """
-        idx_jud_resp = self.run_df.index[
-            self.run_df["type"] == "JudgeResponse"
+        idx_jud_resp = self._df_run.index[
+            self._df_run["type"] == "JudgeResponse"
         ].tolist()
-        h_jud_resp = self.run_df.loc[idx_jud_resp, "stimtype"].tolist()
+        h_jud_resp = self._df_run.loc[idx_jud_resp, "stimtype"].tolist()
         jud_resp = []
         jud_acc = []
         for h_jud in h_jud_resp:
@@ -159,11 +150,11 @@ class _EventsData:
         event_name : str
             User-specified event name, for trial_type
         event_onset : list
-            Start times from self.run_df["timefromstart"]
+            Start times from self._df_run["timefromstart"]
         idx_onset : list
-            Indices where self.run_df["type"] has the onset string
+            Indices where self._df_run["type"] has the onset string
         idx_offset : list
-            Indices where self.run_df["type"] has the offset string
+            Indices where self._df_run["type"] has the offset string
 
         Returns
         -------
@@ -174,25 +165,29 @@ class _EventsData:
 
         """
         if event_name in ["emotion", "intensity"]:
-            h_resp = self.run_df.loc[idx_offset, "stimdescrip"].tolist()
-            h_resp_time = self.run_df.loc[idx_offset, "timefromstart"].tolist()
+            h_resp = self._df_run.loc[idx_offset, "stimdescrip"].tolist()
+            h_resp_time = self._df_run.loc[
+                idx_offset, "timefromstart"
+            ].tolist()
             h_resp_time = [x - y for x, y in zip(h_resp_time, event_onset)]
             h_resp_time = [round(float(x), 2) for x in h_resp_time]
         elif event_name == "judge":
             idx_jud_resp, jud_resp, _ = self._judge_resp()
             h_resp = jud_resp
-            h_resp_time = self.run_df.loc[idx_jud_resp, "stimdescrip"].tolist()
+            h_resp_time = self._df_run.loc[
+                idx_jud_resp, "stimdescrip"
+            ].tolist()
             h_resp_time = [round(float(x), 2) for x in h_resp_time]
         else:
-            h_resp = np.repeat(self.resp_na, len(idx_onset)).tolist()
-            h_resp_time = np.repeat(self.resp_na, len(idx_onset)).tolist()
+            h_resp = np.repeat(self._resp_na, len(idx_onset)).tolist()
+            h_resp_time = np.repeat(self._resp_na, len(idx_onset)).tolist()
 
         return (h_resp, h_resp_time)
 
     def get_info(self, event_name, event_on, event_off):
         """Mine task file for events info.
 
-        Extact values to fill self.events_df for the columns found
+        Extact values to fill self.df_events for the columns found
         in events_cols. Extracts values based on input parameters.
 
         Parameters
@@ -206,19 +201,21 @@ class _EventsData:
 
         Notes
         -----
-        Updates (appends)self.events_df with event-specific information, then
+        Updates (appends)self.df_events with event-specific information, then
         sorts by onset time.
 
         """
         # Get index of event onset and offset
-        idx_onset = self.run_df.index[self.run_df["type"] == event_on].tolist()
-        idx_offset = self.run_df.index[
-            self.run_df["type"] == event_off
+        idx_onset = self._df_run.index[
+            self._df_run["type"] == event_on
+        ].tolist()
+        idx_offset = self._df_run.index[
+            self._df_run["type"] == event_off
         ].tolist()
 
         # Get start/end times, calculate durations, round sig figs
-        event_onset = self.run_df.loc[idx_onset, "timefromstart"].tolist()
-        event_offset = self.run_df.loc[idx_offset, "timefromstart"].tolist()
+        event_onset = self._df_run.loc[idx_onset, "timefromstart"].tolist()
+        event_offset = self._df_run.loc[idx_offset, "timefromstart"].tolist()
         event_duration = [y - x for (x, y) in zip(event_onset, event_offset)]
         event_onset = [round(x, 2) for x in event_onset]
         event_duration = [round(x, 2) for x in event_duration]
@@ -240,7 +237,7 @@ class _EventsData:
         if event_name == "judge":
             _, _, event_accuracy = self._judge_resp()
         else:
-            event_accuracy = np.repeat(self.resp_na, len(idx_onset)).tolist()
+            event_accuracy = np.repeat(self._resp_na, len(idx_onset)).tolist()
 
         # Make event dataframe
         event_dict = {
@@ -256,12 +253,12 @@ class _EventsData:
         df_event = pd.DataFrame(event_dict, columns=event_dict.keys())
         del event_dict
 
-        # Append events_df with event dataframe, sort by onset time
-        self.events_df = pd.concat(
-            [self.events_df, df_event], ignore_index=True
+        # Append df_events with event dataframe, sort by onset time
+        self.df_events = pd.concat(
+            [self.df_events, df_event], ignore_index=True
         )
-        self.events_df = self.events_df.sort_values(by=["onset"])
-        self.events_df = self.events_df.reset_index(drop=True)
+        self.df_events = self.df_events.sort_values(by=["onset"])
+        self.df_events = self.df_events.reset_index(drop=True)
 
 
 # %%
@@ -333,7 +330,7 @@ def events(task_file, subj_raw, subid, sess, task, run):
         subj_raw,
         f"sub-{subid}_{sess}_{task}_{run}_events.tsv",
     )
-    events_info.events_df.to_csv(
+    events_info.df_events.to_csv(
         event_tsv, sep="\t", index=False, na_rep="NaN"
     )
     del events_info
