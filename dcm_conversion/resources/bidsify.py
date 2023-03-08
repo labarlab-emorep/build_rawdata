@@ -9,6 +9,7 @@ import os
 import glob
 import shutil
 import json
+from dcm_conversion.resources import unique_cases
 
 
 def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
@@ -153,12 +154,17 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
                 json.dump(fmap_dict, jf)
 
         elif fmap_count == 2:
-            # Divide the func runs between the fmaps
-            bold_count = len(bold_list)
-            bold_per_fmap = round(bold_count / fmap_count)
-            bold_lists = []
-            bold_lists.append(bold_list[:bold_per_fmap])
-            bold_lists.append(bold_list[bold_per_fmap:])
+            # Check to see if this session needs to
+            # be handled as a unique case. If not,
+            # divide the func runs between the fmaps
+            bold_lists = unique_cases.fmap_issue(sess, subid, bold_list)
+            if bold_lists is None:
+                bold_count = len(bold_list)
+                bold_per_fmap = round(bold_count / fmap_count)
+                bold_lists = []
+                bold_lists.append(bold_list[:bold_per_fmap])
+                bold_lists.append(bold_list[bold_per_fmap:])
+            # TODO: use zip instead of pop
             for fmap_json in fmap_json_list:
                 # Open fmap json
                 with open(fmap_json) as jf:
