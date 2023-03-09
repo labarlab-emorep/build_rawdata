@@ -69,3 +69,79 @@ def wash_issue(trial_types, task, sess, subid):
     if subid in issue_list:
         trial_types["wash"] = wash_update[task]
     return trial_types
+
+
+def fmap_issue(sess, subid, bold_list):
+    """Provide lists of func runs to associate with each fmap.
+
+    For various reasons, certain functional runs may need to
+    be paired with specific fmap acquisitions for certain participants.
+    This function provides those mappings.
+
+    Parameters
+    ----------
+    sess : str
+        BIDS session string
+    subid : str
+        Subject identifier
+    bold_list: list
+        List of bold images
+
+    Returns
+    -------
+    bold_lists : list
+        List of lists, where each sub-list contains the bold
+        images to be associated with a given fmap file.
+
+    """
+
+    subs_to_tend = {
+        "ER9998": {
+            "ses-day2": {
+                "fmap1": ["movies_01", "movies_02", "movies_03"],
+                "fmap2": [
+                    "movies_04",
+                    "movies_05",
+                    "movies_06",
+                    "movies_07",
+                    "movies_08",
+                    "rest_01",
+                ],
+            },
+            "ses-day3": {
+                "fmap1": [
+                    "scenarios_01",
+                    "scenarios_02",
+                    "scenarios_03",
+                    "scenarios_04",
+                    "scenarios_05",
+                    "rest_01",
+                ],
+                "fmap2": [
+                    "scenarios_06",
+                    "scenarios_07",
+                    "scenarios_08",
+                ],
+            },
+        },
+    }
+
+    if subid in subs_to_tend.keys():
+        # For each fmap, create a list of bold file names
+        # that matches the list of keys.
+        bold_lists = []
+        for fmap in sorted(subs_to_tend[subid][sess].keys()):
+            this_list = []
+            for bold_key in subs_to_tend[subid][sess][fmap]:
+                task, run = bold_key.split("_")
+                for bold_file in bold_list:
+                    if (f"task-{task}" in bold_file) and (
+                        f"run-{run}" in bold_file
+                    ):
+                        this_list.append(bold_file)
+            bold_lists.append(this_list)
+
+    else:
+        bold_lists = None
+
+    return bold_lists

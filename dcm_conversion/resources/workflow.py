@@ -154,6 +154,7 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
             nii_list, json_list = process.dcm2niix(
                 subj_source, subj_raw, subid, sess
             )
+
             t1_list = bidsify.bidsify_nii(
                 nii_list, json_list, subj_raw, subid, sess, task
             )
