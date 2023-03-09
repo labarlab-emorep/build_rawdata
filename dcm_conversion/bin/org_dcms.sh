@@ -91,7 +91,8 @@ for i in *dcm; do
     fi
 
     # Setup output location, move dcm
-    prot_dir=${dcm_dir}/${prot_name//>/}
+    # Remove any ">"s protocol name with a single "_".
+    prot_dir=${dcm_dir}/${prot_name//+([>])/_}
     [ ! -d $prot_dir ] && mkdir -p $prot_dir
     echo -e "$c\t$prot_name <- $i"
     mv $i ${prot_dir}/$i

@@ -9,6 +9,7 @@ import os
 import glob
 import shutil
 import json
+from dcm_conversion.resources import unique_cases
 
 
 def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
@@ -54,6 +55,10 @@ def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
             f"{base_str}_task-rest_run-{run}_bold",
         ),
         "DICOM_Field_Map_P_A": ("fmap", f"{base_str}_acq-rpe_dir-PA_epi"),
+        f"DICOM_Field_Map_P_A_run{run}": (
+            "fmap",
+            f"{base_str}_acq-rpe_dir-PA_run-{run}_epi",
+        ),
     }
     return name_dict[dcm2niix_name]
 
@@ -132,15 +137,47 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
             for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
         ]
 
-        # Open fmap json
-        fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
-        with open(fmap_json) as jf:
-            fmap_dict = json.load(jf)
+        # Get list of fmap json files
+        fmap_json_list = sorted(glob.glob(f"{subj_raw}/fmap/*json"))
+        fmap_count = len(fmap_json_list)
 
-        # Update fmap json with intended list, write
-        fmap_dict["IntendedFor"] = bold_list
-        with open(fmap_json, "w") as jf:
-            json.dump(fmap_dict, jf)
+        # Update fmap jsons with intended lists
+        if fmap_count == 1:
+            fmap_json = fmap_json_list[0]
+            # Open fmap json
+            with open(fmap_json) as jf:
+                fmap_dict = json.load(jf)
+
+            # Update fmap json with intended list, write
+            fmap_dict["IntendedFor"] = bold_list
+            with open(fmap_json, "w") as jf:
+                json.dump(fmap_dict, jf)
+
+        elif fmap_count == 2:
+            # Check to see if this session needs to
+            # be handled as a unique case. If not,
+            # divide the func runs between the fmaps
+            bold_lists = unique_cases.fmap_issue(sess, subid, bold_list)
+            if bold_lists is None:
+                bold_count = len(bold_list)
+                bold_per_fmap = round(bold_count / fmap_count)
+                bold_lists = []
+                bold_lists.append(bold_list[:bold_per_fmap])
+                bold_lists.append(bold_list[bold_per_fmap:])
+            # TODO: use zip instead of pop
+            for fmap_json in fmap_json_list:
+                # Open fmap json
+                with open(fmap_json) as jf:
+                    fmap_dict = json.load(jf)
+
+                # Update fmap json with intended list, write
+                fmap_dict["IntendedFor"] = bold_lists.pop(0)
+                with open(fmap_json, "w") as jf:
+                    json.dump(fmap_dict, jf)
+
+        elif fmap_count > 2:
+            raise RuntimeError("More than 2 fmap images found!")
+
     except IndexError:
         print(f"\t\t No fmaps detected for sub-{subid}, skipping.")
 
