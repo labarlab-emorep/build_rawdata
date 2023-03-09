@@ -18,6 +18,6 @@ setup(
         "pandas>=1.4.3",
         "pydeface>=2.0.2",
         "pytest>=7.1.2",
-        "setuptools>=45.2.0",
+        "setuptools>=65.5.1",
     ],
 )
