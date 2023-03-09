@@ -76,6 +76,12 @@ def get_args():
         ),
         type=str,
     )
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="Print package version",
+        action="store_true",
+    )
 
     if len(sys.argv) <= 1:
         parser.print_help(sys.stderr)
@@ -93,6 +99,13 @@ def main():
     sub_all = args.sub_all
     sub_list = args.sub_list
     do_deface = args.deface
+    print_ver = args.version
+
+    if print_ver:
+        import dcm_conversion._version as ver
+
+        print(ver.__version__)
+        sys.exit(0)
 
     raw_path = os.path.join(proj_dir, "rawdata")
     source_path = os.path.join(proj_dir, "sourcedata")
