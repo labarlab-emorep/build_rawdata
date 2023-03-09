@@ -25,13 +25,15 @@ import glob
 import textwrap
 from argparse import ArgumentParser, RawTextHelpFormatter
 from dcm_conversion.resources import bidsify, workflow
+import dcm_conversion._version as ver
 
 
 # %%
 def get_args():
     """Get and parse arguments."""
+    ver_info = f"\nVersion : {ver.__version__}\n\n"
     parser = ArgumentParser(
-        description=__doc__, formatter_class=RawTextHelpFormatter
+        description=ver_info + __doc__, formatter_class=RawTextHelpFormatter
     )
     parser.add_argument(
         "--deface",
@@ -76,12 +78,6 @@ def get_args():
         ),
         type=str,
     )
-    parser.add_argument(
-        "-v",
-        "--version",
-        help="Print package version",
-        action="store_true",
-    )
 
     if len(sys.argv) <= 1:
         parser.print_help(sys.stderr)
@@ -93,19 +89,11 @@ def get_args():
 # %%
 def main():
     """Coordinate module resources."""
-    # Receive arguments
     args = get_args().parse_args()
     proj_dir = args.proj_dir
     sub_all = args.sub_all
     sub_list = args.sub_list
     do_deface = args.deface
-    print_ver = args.version
-
-    if print_ver:
-        import dcm_conversion._version as ver
-
-        print(ver.__version__)
-        sys.exit(0)
 
     raw_path = os.path.join(proj_dir, "rawdata")
     source_path = os.path.join(proj_dir, "sourcedata")
