@@ -96,15 +96,18 @@ def fmap_issue(sess, subid, bold_list):
     """
 
     subs_to_tend = {
-        "ER9998": {
+        "ER0909": {
             "ses-day2": {
-                "fmap1": ["movies_01", "movies_02", "movies_03"],
+                "fmap1": [
+                    "scenarios_01",
+                    "scenarios_02",
+                    "scenarios_03",
+                    "scenarios_04",
+                    "scenarios_05",
+                ],
                 "fmap2": [
-                    "movies_04",
-                    "movies_05",
-                    "movies_06",
-                    "movies_07",
-                    "movies_08",
+                    "scenarios_07",
+                    "scenarios_08",
                     "rest_01",
                 ],
             },
@@ -114,13 +117,13 @@ def fmap_issue(sess, subid, bold_list):
                     "scenarios_02",
                     "scenarios_03",
                     "scenarios_04",
-                    "scenarios_05",
-                    "rest_01",
                 ],
                 "fmap2": [
+                    "scenarios_05",
                     "scenarios_06",
                     "scenarios_07",
                     "scenarios_08",
+                    "rest_01",
                 ],
             },
         },
