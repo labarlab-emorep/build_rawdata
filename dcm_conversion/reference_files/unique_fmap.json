@@ -1,0 +1,18 @@
+{
+    "ER0909": {
+        "ses-day2": {
+            "fmap1": [
+                "scenarios_01",
+                "scenarios_02",
+                "scenarios_03",
+                "scenarios_04",
+                "scenarios_05"
+            ],
+            "fmap2": [
+                "scenarios_07",
+                "scenarios_08",
+                "rest_01"
+            ]
+        }
+    }
+}

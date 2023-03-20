@@ -5,6 +5,9 @@ or a protocol will change, resulting in special cases that
 need to be treated specially by the package.
 
 """
+import json
+import importlib.resources as pkg_resources
+from dcm_conversion import reference_files
 
 
 def wash_issue(trial_types, task, sess, subid):
@@ -89,62 +92,57 @@ def fmap_issue(sess, subid, bold_list):
 
     Returns
     -------
-    bold_lists : list
+    list, None
         List of lists, where each sub-list contains the bold
         images to be associated with a given fmap file.
 
     """
+    # Get user-specified unique_fmaps.json, check for subject and session
+    with pkg_resources.open_text(reference_files, "unique_fmap.json") as jf:
+        subs_to_tend = json.load(jf)
+    if (
+        subid not in subs_to_tend.keys()
+        or sess not in subs_to_tend[subid].keys()
+    ):
+        return None
 
-    subs_to_tend = {
-        "ER0909": {
-            "ses-day2": {
-                "fmap1": [
-                    "scenarios_01",
-                    "scenarios_02",
-                    "scenarios_03",
-                    "scenarios_04",
-                    "scenarios_05",
-                ],
-                "fmap2": [
-                    "scenarios_07",
-                    "scenarios_08",
-                    "rest_01",
-                ],
-            },
-            "ses-day3": {
-                "fmap1": [
-                    "scenarios_01",
-                    "scenarios_02",
-                    "scenarios_03",
-                    "scenarios_04",
-                ],
-                "fmap2": [
-                    "scenarios_05",
-                    "scenarios_06",
-                    "scenarios_07",
-                    "scenarios_08",
-                    "rest_01",
-                ],
-            },
-        },
-    }
+    # Validate user-specified unique_fmaps.json setup
+    sess_dict = subs_to_tend[subid][sess]
+    for fmap_key, map_list in sess_dict.items():
+        if fmap_key not in ["fmap1", "fmap2"]:
+            raise KeyError(
+                "Unexpected key in reference_files/unique_fmap.json:"
+                + f"{subid} {sess} {fmap_key}"
+            )
+        try:
+            task, run = map_list[0].split("_")
+            if task not in ["scenarios", "movies"]:
+                raise ValueError(
+                    "Unexpected task in reference_files/"
+                    + f"unique_fmap.json: {task}"
+                )
+        except ValueError:
+            raise ValueError(
+                "Unexpected task format in reference_files/"
+                + f"unique_fmap.json: {map_list[0]}"
+            )
 
-    if subid in subs_to_tend.keys():
-        # For each fmap, create a list of bold file names
-        # that matches the list of keys.
-        bold_lists = []
-        for fmap in sorted(subs_to_tend[subid][sess].keys()):
-            this_list = []
-            for bold_key in subs_to_tend[subid][sess][fmap]:
-                task, run = bold_key.split("_")
-                for bold_file in bold_list:
-                    if (f"task-{task}" in bold_file) and (
-                        f"run-{run}" in bold_file
-                    ):
-                        this_list.append(bold_file)
-            bold_lists.append(this_list)
-
-    else:
-        bold_lists = None
-
-    return bold_lists
+    # For each fmap, create a list of bold file names
+    # that matches the list of keys.
+    map_bold_fmap = []
+    for fmap_key, map_list in sess_dict.items():
+        match_list = []
+        for bold_key in map_list:
+            task, run = bold_key.split("_")
+            match_bold = [
+                x for x in bold_list if f"task-{task}_run-{run}" in x
+            ]
+            if len(match_bold) == 1:
+                match_list.append(match_bold[0])
+            elif len(match_bold) > 1:
+                raise ValueError(
+                    "Too many fmap-bold matches, check task"
+                    + f" and run values: {bold_key}"
+                )
+        map_bold_fmap.append(match_list)
+    return map_bold_fmap

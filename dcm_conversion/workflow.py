@@ -154,7 +154,6 @@ def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
             nii_list, json_list = process.dcm2niix(
                 subj_source, subj_raw, subid, sess
             )
-
             t1_list = bidsify.bidsify_nii(
                 nii_list, json_list, subj_raw, subid, sess, task
             )
@@ -600,6 +599,7 @@ def dcm_worflow(
             return
 
     _ = _process_mri(source_path, raw_path, deriv_dir, subid, do_deface)
+    return
     _ = _process_beh(source_path, raw_path, subid)
     _ = _process_rate(source_path, raw_path, subid)
     _ = _process_phys(source_path, raw_path, deriv_dir, subid)

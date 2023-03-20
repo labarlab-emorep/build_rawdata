@@ -24,7 +24,8 @@ import sys
 import glob
 import textwrap
 from argparse import ArgumentParser, RawTextHelpFormatter
-from dcm_conversion.resources import bidsify, workflow
+from dcm_conversion import workflow
+from dcm_conversion.resources import bidsify
 import dcm_conversion._version as ver
 
 

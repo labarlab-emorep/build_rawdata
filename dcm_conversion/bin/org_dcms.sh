@@ -84,15 +84,22 @@ c=0
 for i in *dcm; do
 
     # Extract, check name
-    prot_name=$(dicom_hdr $i | grep "0008 103e" | sed 's/^.*tion\/\///' | sed 's/ //g')
+    prot_name=$(dicom_hdr $i | \
+        grep "0008 103e" | \
+        sed 's/^.*tion\/\///' | \
+        sed 's/ //g')
     if [ ${#prot_name} == 0 ]; then
         echo -e "No Name detected for $i"
         continue
     fi
 
+    # Manage fmap >> characters, and extra fmap run info
+    prot_name=${prot_name//>/}
+    prot_name=${prot_name/run_2/run2}
+
     # Setup output location, move dcm
-    # Remove any ">"s protocol name with a single "_".
-    prot_dir=${dcm_dir}/${prot_name//+([>])/_}
+    # Remove any ">"s in name
+    prot_dir=${dcm_dir}/$prot_name
     [ ! -d $prot_dir ] && mkdir -p $prot_dir
     echo -e "$c\t$prot_name <- $i"
     mv $i ${prot_dir}/$i

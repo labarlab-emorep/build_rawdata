@@ -9,10 +9,11 @@ import os
 import glob
 import shutil
 import json
+from typing import Union
 from dcm_conversion.resources import unique_cases
 
 
-def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
+def _switch_name(dcm2niix_name, subid, sess, task=None, run=None):
     """Determine EmoRep file types.
 
     Use default filename string output by dcm2niix to
@@ -43,7 +44,8 @@ def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
     base_str = f"sub-{subid}_{sess}"
 
     # Key is from dcm2niix file names, value tuple contains
-    # BIDS directory and file names.
+    # BIDS directory and file names. Manage new fmap
+    # protocol names being called P_A_run1 and P_A_run_2.
     name_dict = {
         "DICOM_EmoRep_anat": ("anat", f"{base_str}_T1w"),
         f"DICOM_EmoRep_run{run}": (
@@ -55,7 +57,11 @@ def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
             f"{base_str}_task-rest_run-{run}_bold",
         ),
         "DICOM_Field_Map_P_A": ("fmap", f"{base_str}_acq-rpe_dir-PA_epi"),
-        f"DICOM_Field_Map_P_A_run{run}": (
+        f"DICOM_Field_Map_P_A_run1": (
+            "fmap",
+            f"{base_str}_acq-rpe_dir-PA_run-{run}_epi",
+        ),
+        f"DICOM_Field_Map_P_A_run_2": (
             "fmap",
             f"{base_str}_acq-rpe_dir-PA_run-{run}_epi",
         ),
@@ -102,10 +108,13 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
     for h_file in nii_json_list:
 
         # Get first part of file name, use as key in dict-switch to
-        # get (new) BIDS directory and file name.
+        # get (new) BIDS directory and file name. Manage new fmap
+        # protocol names being called P_A_run1 and P_A_run_2.
         dcm2niix_name = os.path.basename(h_file).split("_20")[0]
         if "run" in dcm2niix_name:
             run = dcm2niix_name.split("run")[1]
+            run = run[1:] if run[0] == "_" else run
+            run = run.zfill(2)
             bids_dir, bids_name = _switch_name(
                 dcm2niix_name, subid, sess, task, run
             )
@@ -128,73 +137,65 @@ def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
     if not t1_list:
         raise FileNotFoundError("No BIDS-organized T1w files detected.")
 
-    # Update fmap json with "IntendedFor" field
+    # Find bold files
     print(f"\t Updating fmap jsons for sub-{subid}, {sess} ...")
     try:
-        # Extract session and file name, per BIDS validator reqs
         bold_list = [
             x.split(f"sub-{subid}/")[1]
             for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
         ]
-
-        # Get list of fmap json files
-        fmap_json_list = sorted(glob.glob(f"{subj_raw}/fmap/*json"))
-        fmap_count = len(fmap_json_list)
-
-        # Update fmap jsons with intended lists
-        if fmap_count == 1:
-            fmap_json = fmap_json_list[0]
-            # Open fmap json
-            with open(fmap_json) as jf:
-                fmap_dict = json.load(jf)
-
-            # Update fmap json with intended list, write
-            fmap_dict["IntendedFor"] = bold_list
-            with open(fmap_json, "w") as jf:
-                json.dump(fmap_dict, jf)
-
-        elif fmap_count == 2:
-            # Check to see if this session needs to
-            # be handled as a unique case. If not,
-            # divide the func runs between the fmaps
-            bold_lists = unique_cases.fmap_issue(sess, subid, bold_list)
-            if bold_lists is None:
-                bold_count = len(bold_list)
-                bold_per_fmap = round(bold_count / fmap_count)
-                bold_lists = []
-                bold_lists.append(bold_list[:bold_per_fmap])
-                bold_lists.append(bold_list[bold_per_fmap:])
-            # TODO: use zip instead of pop
-            for fmap_json in fmap_json_list:
-                # Open fmap json
-                with open(fmap_json) as jf:
-                    fmap_dict = json.load(jf)
-
-                # Update fmap json with intended list, write
-                fmap_dict["IntendedFor"] = bold_lists.pop(0)
-                with open(fmap_json, "w") as jf:
-                    json.dump(fmap_dict, jf)
-
-        elif fmap_count > 2:
-            raise RuntimeError("More than 2 fmap images found!")
-
     except IndexError:
-        print(f"\t\t No fmaps detected for sub-{subid}, skipping.")
+        print(f"\t\t No func detected for sub-{subid}, skipping.")
+        return t1_list
+
+    # Get list of fmap json files
+    fmap_json_list = sorted(glob.glob(f"{subj_raw}/fmap/*json"))
+    if not fmap_json_list:
+        print(f"\t\t No fmap detected for sub-{subid}, skipping.")
+        return t1_list
+    fmap_count = len(fmap_json_list)
+    if fmap_count > 2:
+        raise ValueError("More than 2 fmap images found!")
+
+    def _update_json(
+        bids_json: Union[str, os.PathLike],
+        field: str,
+        values: Union[list, str],
+    ):
+        """Add, updated field to BIDS JSON sidecar."""
+        with open(bids_json) as jf:
+            sidecar_dict = json.load(jf)
+        sidecar_dict[field] = values
+        with open(bids_json, "w") as jf:
+            json.dump(sidecar_dict, jf)
+
+    # Update fmap jsons with intended lists - for old protocol (fmap==1)
+    # assign all funcs to fmap. For new protocol (fmap==2) split runs
+    # between two fmaps.
+    if fmap_count == 1:
+        _update_json(fmap_json_list[0], "IntendedFor", bold_list)
+    elif fmap_count == 2:
+
+        # Get special cases or split runs, ensure rest is at end
+        # of list.
+        map_bold_fmap = unique_cases.fmap_issue(sess, subid, bold_list)
+        if not map_bold_fmap:
+            rest_idx = [x for x, y in enumerate(bold_list) if "task-rest" in y]
+            if rest_idx:
+                bold_list = bold_list.append(bold_list.pop(rest_idx[0]))
+            map_bold_fmap = []
+            map_bold_fmap.append(bold_list[:4])
+            map_bold_fmap.append(bold_list[4:])
+
+        for fmap_json, map_bold in zip(fmap_json_list, map_bold_fmap):
+            _update_json(fmap_json, "IntendedFor", map_bold)
 
     # Update func jsons with "TaskName" Field, account for task/rest
     print(f"\t Updating func jsons for sub-{subid}, {sess} ...")
     func_json_all = sorted(glob.glob(f"{subj_raw}/func/*_bold.json"))
     for func_json in func_json_all:
-
-        # Get task name, open json
         h_task = func_json.split("_task-")[1].split("_")[0]
-        with open(func_json) as jf:
-            func_dict = json.load(jf)
-
-        # Update, write json
-        func_dict["TaskName"] = h_task
-        with open(func_json, "w") as jf:
-            json.dump(func_dict, jf)
+        _update_json(func_json, "TaskName", h_task)
 
     return t1_list
 
