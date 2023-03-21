@@ -12,6 +12,8 @@ setup(
         ]
     },
     scripts=["dcm_conversion/bin/org_dcms.sh"],
+    include_package_data=True,
+    package_data={"": ["reference_files/*.json"]},
     install_requires=[
         "bioread>=3.0.0",
         "neurokit2>=0.2.1",
