@@ -53,117 +53,124 @@ def _split(sess_task, subid):
 
 
 # %%
-def _process_mri(source_path, raw_path, deriv_dir, subid, do_deface):
-    """Convert DICOMs for subject.
+class _ProcessMri:
+    """Convert DICOMs into NIfTIs and BIDS organize.
 
-    Validate organization scheme of DICOM dir, organize DICOMs
-    according to their "0008 103e" field, use dcm2niix to generate
-    NIfTI files and setup/writeout to rawdata. BIDs-organize rawdata,
-    and also deface anat files for NDAR uploads.
+    Also supports defacing for NDAR hosting.
 
-    Parameters
-    ----------
-    source_path : path
-        Location of project sourcedata
-    raw_path : path
-        Location of subject's rawdata
-    deriv_dir : path
-        Location of derivatives directory
-    subid : str
-        Subject identifier
-    do_deface : bool
-        Whether to deface T1w files
-
-    Returns
+    Methods
     -------
-    None, True
-        None = participant does not have properly-organized DICOMs
-        True = all processing occured successfully
+    make_niftis(dcm_source)
+    bidsify_niftis()
+    deface_anat(deriv_dir)
 
-    Notes
-    -----
-    Skips participant if DICOMs are not detected or properly organized.
+    Example
+    -------
+    pm = _ProcessMri("ER0009", "/path/to/rawdata")
+    pm.make_niftis("/path/to/ER0009/day2_movies/DICOM")
+    pm.bidsify_niftis()
+    pm.deface_anat("/path/to/derivatives")
 
     """
-    print("\tProcessing MRI data ...")
 
-    # Identify DICOM locations, verify
-    dcm_list = sorted(glob.glob(f"{source_path}/{subid}/day*/DICOM"))
-    if not dcm_list:
-        print(
-            f"\tNo properly organized DICOMs detected for sub-{subid}. "
-            + "Skipping."
+    def __init__(self, subid, raw_path):
+        """Initialize."""
+        print("\tInitializing _ProcessMri")
+        self._subid = subid
+        self._subj = f"sub-{subid}"
+        self._raw_path = raw_path
+
+    def _organize_dcms(self):
+        """Organize DICOMs according to protocol name."""
+        chk_dir = os.path.join(self._dcm_source, "EmoRep_anat")
+        if os.path.exists(chk_dir):
+            return
+
+        print(f"\t\tOrganizing DICOMs for {self._subj}, {self._sess} ...")
+        sh_run = sp.Popen(
+            f"org_dcms.sh -d {self._dcm_source}",
+            shell=True,
+            stdout=sp.PIPE,
+            stderr=sp.PIPE,
         )
-        return
-
-    # Organize and convert data from all dicoms
-    for subj_source in dcm_list:
-
-        # Setup sess, task strings
-        sess_task = "ses-day" + subj_source.split("day")[1].split("/")[0]
-        sess, task = _split(sess_task, subid)
-        if not sess:
-            continue
-
-        # Check for DICOMs
-        try:
-            glob.glob(f"{subj_source}/**/*.dcm", recursive=True)[0]
-        except IndexError:
-            print(
-                "\tNo properly organized DICOMs detected for "
-                + f"sub-{subid}, {sess}. Skipping."
+        sh_out, sh_err = sh_run.communicate()
+        sh_run.wait()
+        if not os.path.exists(chk_dir):
+            process.error_msg(
+                "Missing expected output of bin/org_dcms.sh",
+                sh_out.decode("utf-8"),
+                sh_err.decode("utf-8"),
             )
-            continue
+            raise FileNotFoundError("No organized DICOMS found.")
 
-        # Setup subject rawdata, run dcm2niix
-        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}")
-        if not os.path.exists(subj_raw):
-            os.makedirs(subj_raw)
+    def make_niftis(self, dcm_source):
+        """Convert sourcedata DICOMs to NIfTIs.
 
-        # Check for existing niis
-        t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
+        Organizes DICOMs in dcm_source via bin/org_dcms.sh,
+        then triggers process.dcm2niix.
+
+        Parameters
+        ----------
+        dcm_source : str, os.PathLike
+            Path to participant's DICOM directgory
+
+        """
+        # Determine session/task names and organize DICOMs
+        self._dcm_source = dcm_source
+        sess_dir = os.path.basename(os.path.dirname(dcm_source))
+        _day, _tname = sess_dir.split("_")
+        self._sess = f"ses-{_day}"
+        self._task = f"task-{_tname}"
+        self._organize_dcms()
+
+        #
+        print(f"\t\tMaking NIfTIs for {self._subj}, {self._sess} ...")
+        self._subj_raw = os.path.join(self._raw_path, self._subj, self._sess)
+        if not os.path.exists(self._subj_raw):
+            os.makedirs(self._subj_raw)
+
+        # Check for previous BIDS
+        chk_anat = glob.glob(f"{self._subj_raw}/anat/*.nii.gz")
+        if chk_anat:
+            return
+        process.dcm2niix(dcm_source, self._subj_raw, self._subid, self._sess)
+
+    def bidsify_niftis(self):
+        """BIDS-organize raw dcm2niix output."""
+        if not hasattr(self, "_subj_raw") or not hasattr(self, "_sess"):
+            raise AttributeError(
+                "_ProcessMri.bidsify_niftis requires _ProcessMri.make_niftis"
+                + f" to be run first."
+            )
+
+        # Check for previous BIDS
+        chk_bids = glob.glob(f"{self._subj_raw}/fmap/*.nii.gz")
+        if chk_bids:
+            return
+
+        #
+        bn = bidsify.BidsifyNii(
+            self._subj_raw, self._subj, self._sess, self._task
+        )
+        bn.bids_nii()
+        bn.update_func()
+        bn.update_fmap()
+
+    def deface_anat(self, deriv_dir):
+        """Deface BIDS-organized anat file."""
+        if not hasattr(self, "_subj_raw") or not os.path.exists(
+            os.path.join(self._subj_raw, "anat")
+        ):
+            raise RuntimeError(
+                "_ProcessMri.deface_anat requires both _ProcessMri.make_niftis"
+                + " and _ProcessMri.bidsify_niftis to be run first"
+            )
+        t1_list = sorted(glob.glob(f"{self._subj_raw}/anat/*T1w.nii.gz"))
         if not t1_list:
-
-            # Organize DICOMs if needed
-            check_dir = os.path.join(subj_source, "EmoRep_anat")
-            if not os.path.exists(check_dir):
-                print(f"\tOrganizing DICOMs for sub-{subid}, {sess} ...")
-                sh_run = sp.Popen(
-                    f"org_dcms.sh -d {subj_source}",
-                    shell=True,
-                    stdout=sp.PIPE,
-                    stderr=sp.PIPE,
-                )
-                sh_out, sh_err = sh_run.communicate()
-                sh_run.wait()
-
-            # Check that organization happened
-            if not os.path.exists(check_dir):
-                raise FileNotFoundError(
-                    f"""Missing expected output of bin/org_dcms.sh, see below.
-
-                    orgs_dcm.sh stdout:
-                        {sh_out.decode("utf-8")}
-                    orgs_dcm.sh stderr:
-                        {sh_err.decode("utf-8")}
-                    """
-                )
-
-            # Run dcm2niix, bidsify
-            print(f"\tConverting DICOMs for sub-{subid}, {sess} ...")
-            nii_list, json_list = process.dcm2niix(
-                subj_source, subj_raw, subid, sess
+            raise FileNotFoundError(
+                f"No T1w files detected in {self._subj_raw}/anat"
             )
-            t1_list = bidsify.bidsify_nii(
-                nii_list, json_list, subj_raw, subid, sess, task
-            )
-
-        # Run defacing
-        if do_deface:
-            _ = process.deface(t1_list, deriv_dir, subid, sess)
-        print("\t Done!")
-
-    return True
+        _ = process.deface(t1_list, deriv_dir, self._subid, self._sess)
 
 
 # %%
@@ -559,9 +566,9 @@ def dcm_worflow(
 
     Returns
     -------
-    None, True
-        None = Improper organization detected
-        True = all processing finished successfully
+    bool
+        Whether all processing finished successfully
+
 
     Notes
     -----
@@ -570,7 +577,9 @@ def dcm_worflow(
 
     """
     print(f"\nProcessing data for {subid} ...")
-    # Identify sessions
+
+    # Validate sourcedata session names
+    print("\tChecking sourcedata session names ...")
     subj_source = os.path.join(source_path, subid)
     sess_list = [x for x in os.listdir(subj_source) if fnmatch(x, "day*")]
     if not sess_list:
@@ -578,10 +587,7 @@ def dcm_worflow(
             "\tNo sourcedata properly named session directories "
             + "detected, skipping."
         )
-        return
-
-    # Check organization of each session
-    print("\tChecking sourcedata session names ...")
+        return False
     for sess in sess_list:
         try:
             day, task = sess.split("_")
@@ -590,15 +596,38 @@ def dcm_worflow(
                 "\tERROR: Incorrect sourcedata session directory "
                 + f"name : {sess}"
             )
-            return
+            return False
         if len(day) != 4 or not (task == "movies" or task == "scenarios"):
             print(
                 "\tERROR: Incorrect sourcedata session directory "
                 + f"name : {sess}"
             )
-            return
+            return False
 
-    _ = _process_mri(source_path, raw_path, deriv_dir, subid, do_deface)
+    # Get DICOM directory paths
+    dcm_list = sorted(glob.glob(f"{source_path}/{subid}/day*/DICOM"))
+    if not dcm_list:
+        print(
+            f"\tNo properly organized DICOMs detected for sub-{subid}. "
+            + "Skipping."
+        )
+        return False
+
+    # Process MRI data
+    mk_mri = _ProcessMri(subid, raw_path)
+    for dcm_source in dcm_list:
+        chk_dcm = glob.glob(f"{dcm_source}/**/*.dcm", recursive=True)
+        if not chk_dcm:
+            print(f"\tNo DICOMs found at {dcm_source}, skipping ...")
+            continue
+
+        # Make NIfTI, bidsify, and deface
+        mk_mri.make_niftis(dcm_source)
+        mk_mri.bidsify_niftis()
+        if do_deface:
+            mk_mri.deface_anat(deriv_dir)
+
+    return
     _ = _process_beh(source_path, raw_path, subid)
     _ = _process_rate(source_path, raw_path, subid)
     _ = _process_phys(source_path, raw_path, deriv_dir, subid)
