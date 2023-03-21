@@ -8,6 +8,7 @@ import os
 import json
 import pandas as pd
 import numpy as np
+from typing import Union
 from dcm_conversion.resources import unique_cases
 
 
@@ -262,80 +263,8 @@ class _EventsData:
 
 
 # %%
-def events(task_file, subj_raw, subid, sess, task, run):
-    """Coordinate events file construction.
-
-    Determine event names and on/offset strings for each task,
-    build the events file, then write it to appropriate location.
-    Finally, generate events.json files, supplying custom events
-    columns and trial_type/stim_info values.
-
-    Parameters
-    ----------
-    task_file : path
-        Location of task run file
-    subj_raw : path
-        Location of subject's rawdata directory
-    subid : str
-        Subject identifier
-    sess : str
-        BIDS session
-    task : str
-        BIDS task
-    run : str
-        BIDS run
-
-    Returns
-    -------
-    tuple
-        [0] = Path to events.tsv
-        [1] = Path to events.json
-
-    """
-    # Setup task-specific trial_type and on/off values
-    exp_types = {
-        "task-movies": {
-            "fixS": ["isiOnset", "isiOffset"],
-            "fix": ["IsiOnset", "IsiOffset"],
-            "movie": ["MovieStimOnset", "MovieStimOffset"],
-            "judge": ["JudgeOnset", "JudgeOffset"],
-            "replay": ["ReplayOnset", "ReplayOffset"],
-            "emotion": ["EmoSelOnset", "EmoSelOffset"],
-            "intensity": ["IntenSelOnset", "IntenSelOffset"],
-            "wash": ["WashStimOnset", "WashStimOffset"],
-        },
-        "task-scenarios": {
-            "fixS": ["isiOnset", "isiOffset"],
-            "fix": ["IsiOnset", "IsiOffset"],
-            "scenario": ["VigOnset", "VigOffset"],
-            "judge": ["JudgeOnset", "JudgeOffset"],
-            "replay": ["ReplayOnset", "ReplayOffset"],
-            "emotion": ["EmoSelOnset", "EmoSelOffset"],
-            "intensity": ["IntenSelOnset", "IntenSelOffset"],
-            "wash": ["WashStimOnset", "WashStimOffset"],
-        },
-    }
-
-    # Determine relevant trial types, account for unique cases
-    trial_types = exp_types[task]
-    trial_types = unique_cases.wash_issue(trial_types, task, sess, subid)
-
-    # Generate events files
-    events_info = _EventsData(task_file)
-    for h_name, on_off in trial_types.items():
-        events_info.get_info(h_name, on_off[0], on_off[1])
-
-    # Write out events file
-    event_tsv = os.path.join(
-        subj_raw,
-        f"sub-{subid}_{sess}_{task}_{run}_events.tsv",
-    )
-    events_info.df_events.to_csv(
-        event_tsv, sep="\t", index=False, na_rep="NaN"
-    )
-    del events_info
-
-    # Prepare task info for events json
+def _events_json(task: str, event_tsv: Union[str, os.PathLike]):
+    """Generate events.json, supplying custom columns and values."""
     event_dict = {
         "trial_type": {
             "LongName": f"Emotion Task with {task.split('-')[1]}",
@@ -396,11 +325,82 @@ def events(task_file, subj_raw, subid, sess, task, run):
         ] = "Vignette of emotional event"
 
     # Write event json file
-    event_json = f"{subj_raw}/sub-{subid}_{sess}_{task}_{run}_events.json"
+    event_json = event_tsv.replace(".json", ".tsv")
     with open(event_json, "w") as jf:
         json.dump(event_dict, jf)
 
-    return (event_tsv, event_json)
+
+# %%
+def events_tsv(task_file, subj_raw, subid, sess, task, run):
+    """Coordinate events file construction.
+
+    Determine event names and on/offset strings for each task,
+    build the events file, then write it to appropriate location.
+
+    Parameters
+    ----------
+    task_file : path
+        Location of task run file
+    subj_raw : path
+        Location of subject's rawdata directory
+    subid : str
+        Subject identifier
+    sess : str
+        BIDS session
+    task : str
+        BIDS task
+    run : str
+        BIDS run
+
+    Returns
+    -------
+    tuple
+        [0] = Path to events.tsv
+        [1] = Path to events.json
+
+    """
+    # Setup task-specific trial_type and on/off values
+    exp_types = {
+        "task-movies": {
+            "fixS": ["isiOnset", "isiOffset"],
+            "fix": ["IsiOnset", "IsiOffset"],
+            "movie": ["MovieStimOnset", "MovieStimOffset"],
+            "judge": ["JudgeOnset", "JudgeOffset"],
+            "replay": ["ReplayOnset", "ReplayOffset"],
+            "emotion": ["EmoSelOnset", "EmoSelOffset"],
+            "intensity": ["IntenSelOnset", "IntenSelOffset"],
+            "wash": ["WashStimOnset", "WashStimOffset"],
+        },
+        "task-scenarios": {
+            "fixS": ["isiOnset", "isiOffset"],
+            "fix": ["IsiOnset", "IsiOffset"],
+            "scenario": ["VigOnset", "VigOffset"],
+            "judge": ["JudgeOnset", "JudgeOffset"],
+            "replay": ["ReplayOnset", "ReplayOffset"],
+            "emotion": ["EmoSelOnset", "EmoSelOffset"],
+            "intensity": ["IntenSelOnset", "IntenSelOffset"],
+            "wash": ["WashStimOnset", "WashStimOffset"],
+        },
+    }
+
+    # Determine relevant trial types, account for unique cases
+    trial_types = exp_types[task]
+    trial_types = unique_cases.wash_issue(trial_types, task, sess, subid)
+
+    # Generate events files
+    events_info = _EventsData(task_file)
+    for h_name, on_off in trial_types.items():
+        events_info.get_info(h_name, on_off[0], on_off[1])
+
+    # Write out events files
+    event_tsv = os.path.join(
+        subj_raw,
+        f"sub-{subid}_{sess}_{task}_{run}_events.tsv",
+    )
+    events_info.df_events.to_csv(
+        event_tsv, sep="\t", index=False, na_rep="NaN"
+    )
+    _events_json(task, event_tsv)
 
 
 # %%

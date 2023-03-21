@@ -5,6 +5,7 @@ import re
 import glob
 import shutil
 import subprocess as sp
+from typing import Union
 from fnmatch import fnmatch
 from datetime import datetime
 import bioread  # left here for generatings requirements files
@@ -73,7 +74,7 @@ class _ProcessMri:
 
     """
 
-    def __init__(self, subid, raw_path):
+    def __init__(self, subid: str, raw_path: Union[str, os.PathLike]):
         """Initialize."""
         print("\tInitializing _ProcessMri")
         self._subid = subid
@@ -174,68 +175,42 @@ class _ProcessMri:
 
 
 # %%
-def _process_beh(source_path, raw_path, subid):
-    """Make events files for subject.
+class _ProcessBeh:
+    """Make BIDS-organized events sidecars.
 
-    Validate organization of Scanner_behav then generate BIDS-compliant
-    events tsv and json files for the movie and scenario tasks.
+    Convert EmoRep task output into events sidecars, organize in rawdata.
 
-    Parameters
-    ----------
-    source_path : path
-        Location of project sourcedata
-    raw_path : path
-        Location of subject's rawdata directory
-    subid : str
-        Subject identifier
-
-    Returns
+    Methods
     -------
-    None, True
-        None = participant does not have properly-organized behavior data
-        True = all processing occured successfully
+    make_events(task_path)
 
-    Notes
-    -----
-    Skips participant if task files are not detected or properly organized,
-    named incorrectly, located in the wrong session, are from the wrong
-    participant, or located in the wrong task.
+    Example
+    -------
+    pb = _ProcessBeh("ER0009", "/path/to/rawdata")
+    pb.make_events("/path/to/sourcedata/ER0009/run01.csv")
 
     """
-    print("\tProcessing task behavior data ...")
 
-    # Set session, task name map
-    task_switch = {
-        "movies": "scannermovieData",
-        "scenarios": "scannertextData",
-    }
+    def __init__(self, subid: str, raw_path: Union[str, os.PathLike]):
+        """Initialize."""
+        self._subid = subid
+        self._subj = f"sub-{subid}"
+        self._raw_path = raw_path
+        self._task_switch = {
+            "movies": "scannermovieData",
+            "scenarios": "scannertextData",
+        }
 
-    # Check for Scanner_behav dir
-    task_list = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_behav"))
-    if not task_list:
-        print(
-            "\tNo properly organized task files detected for "
-            + f"sub-{subid}. Skipping."
+    def _validate(self) -> bool:
+        """Validate naming and organization of sourcedata task files."""
+        # Get day, task, filename
+        day = os.path.basename(
+            os.path.dirname(os.path.dirname(self._task_path))
         )
-        return
-
-    # Create events files for all task runs
-    beh_list = sorted(
-        glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
-    )
-    if not beh_list:
-        print(
-            "\tNo properly organized task files detected for "
-            + f"sub-{subid}. Skipping."
-        )
-        return
-    for task_path in beh_list:
-
-        # Check that file is in correct location, deal with different
-        # naming conventions.
-        day = os.path.basename(os.path.dirname(os.path.dirname(task_path)))
         task = day.split("_")[1]
-        task_file = os.path.basename(task_path)
+        task_file = os.path.basename(self._task_path)
+
+        # Check file name
         try:
             _, chk_task, h_subid, h_sess, _, _ = task_file.split("_")
         except ValueError:
@@ -243,51 +218,65 @@ def _process_beh(source_path, raw_path, subid):
                 f"ERROR: Improperly named task file : {task_file}s "
                 + "skipping."
             )
-            continue
-        if chk_task != task_switch[task]:
+            return False
+
+        # Check task located in correct session
+        if chk_task != self._task_switch[task]:
             print(
                 f"\tERROR: Mismatch of task file '{chk_task}' with "
                 + f"session '{day}', skipping."
             )
-            continue
+            return False
+
+        # Check task belongs to subject
         chk_subid = h_subid[4:] if "sub" in h_subid else h_subid
-        if chk_subid != subid:
+        if chk_subid != self._subid:
             print(
-                f"\tERROR: Task file for subject '{chk_subid}' found "
-                + f"in sourcedata/{subid}/{day}/Scanner_behav, skipping."
+                f"\tERROR: Task file for subject '{chk_subid}' found in "
+                + f"sourcedata/{self._subid}/{day}/Scanner_behav, skipping."
             )
-            continue
+            return False
+
+        # Check session and day alignment
         chk_sess = h_sess[4:] if "-" in h_sess else h_sess[3:]
         if chk_sess != day[:4]:
             print(
                 f"\tERROR: File for '{chk_sess}' found in "
                 + f"session '{day}', skipping."
             )
-            continue
+            return False
+        return True
+
+    def make_events(self, task_path: Union[str, os.PathLike]):
+        """Generate events files if needed."""
+        self._task_path = task_path
+        if not self._validate():
+            return
 
         # Setup sess, task, and run strings - deal with change
         # in naming format.
+        task_file = os.path.basename(task_path)
         try:
-            run = "run-0" + task_path.split("run-")[1].split("_")[0]
+            run = "run-0" + task_file.split("run-")[1].split("_")[0]
         except IndexError:
-            run = "run-0" + task_path.split("run")[1].split("_")[0]
-        sess_task = "ses-day" + task_path.split("day")[1].split("/")[0]
-        sess, task = _split(sess_task, subid)
-        if not sess:
-            continue
+            run = "run-0" + task_file.split("run")[1].split("_")[0]
+        day_task = task_path.split("day")[1].split("/")[0]
+        _day, _tname = day_task.split("_")
+        sess = f"ses-{_day}"
+        task = f"task-{_tname}"
 
-        # Make func events sidecars
-        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}/func")
+        # Setup output location, make events sidecar
+        subj_raw = os.path.join(self._raw_path, f"{self._subj}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
         out_file = os.path.join(
-            subj_raw, f"sub-{subid}_{sess}_{task}_{run}_events.tsv"
+            subj_raw, f"{self._subj}_{sess}_{task}_{run}_events.tsv"
         )
         if not os.path.exists(out_file):
             print(f"\t Making events file for {task}, {run} ...")
-            _, _ = behavior.events(task_path, subj_raw, subid, sess, task, run)
-
-    return True
+            behavior.events_tsv(
+                task_path, subj_raw, self._subid, sess, task, run
+            )
 
 
 # %%
@@ -569,7 +558,6 @@ def dcm_worflow(
     bool
         Whether all processing finished successfully
 
-
     Notes
     -----
     Skips participant sourcedata is not setup or session directories
@@ -627,8 +615,31 @@ def dcm_worflow(
         if do_deface:
             mk_mri.deface_anat(deriv_dir)
 
+    # Check for Scanner_behav dir
+    task_list = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_behav"))
+    if not task_list:
+        print(
+            "\tNo properly organized task files detected for "
+            + f"sub-{subid}. Skipping."
+        )
+        return
+
+    # Create events files for all task runs
+    beh_list = sorted(
+        glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
+    )
+    if not beh_list:
+        print(
+            "\tNo properly organized task files detected for "
+            + f"sub-{subid}. Skipping."
+        )
+        return
+    mk_beh = _ProcessBeh(subid, raw_path)
+    for task_path in beh_list:
+        mk_beh.make_events(task_path)
+
     return
-    _ = _process_beh(source_path, raw_path, subid)
+    # _ = _process_beh(source_path, raw_path, subid)
     _ = _process_rate(source_path, raw_path, subid)
     _ = _process_phys(source_path, raw_path, deriv_dir, subid)
     print(f"\t Done processing data for {subid}.")
