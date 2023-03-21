@@ -133,7 +133,7 @@ def deface(t1_list, deriv_dir, subid, sess):
 
     deface_list = []
     for t1_path in t1_list:
-        print(f"\t Defacing T1w for sub-{subid}, {sess} ...")
+        print(f"\t\t\tDefacing T1w for sub-{subid}, {sess} ...")
 
         # Determine input, outut paths and name
         t1_file = os.path.basename(t1_path)

@@ -13,8 +13,11 @@ class BidsifyNii:
     Methods
     -------
     bids_nii()
+        BIDS-organize rawdata NIfTIs
     update_func()
+        Update func json with TaskName
     update_fmap()
+        Update fmap json with IntendedFor
 
     Example
     -------
@@ -32,7 +35,7 @@ class BidsifyNii:
 
     def __init__(self, subj_raw, subj, sess, task):
         """Initialize."""
-        print("Initializing BidsifyNii")
+        print("\t\t\tInitializing BidsifyNii")
         self._subj_raw = subj_raw
         self._subj = subj
         self._sess = sess
@@ -51,7 +54,7 @@ class BidsifyNii:
 
         # Rename, organize each nii/json file
         print(
-            "\t Renaming, organizing NIfTIs for "
+            "\t\t\t\tRenaming, organizing NIfTIs for "
             + f"{self._subj}, {self._sess} ..."
         )
         for h_file in nii_json_list:
@@ -89,7 +92,9 @@ class BidsifyNii:
     def update_func(self):
         """Updated TaskName field of func JSON sidecars."""
         # Update func jsons with "TaskName" Field, account for task/rest
-        print(f"\t Updating func jsons for {self._subj}, {self._sess} ...")
+        print(
+            f"\t\t\t\tUpdating func jsons for {self._subj}, {self._sess} ..."
+        )
         func_json_all = sorted(glob.glob(f"{self._subj_raw}/func/*_bold.json"))
         if not func_json_all:
             raise ValueError(
@@ -101,7 +106,9 @@ class BidsifyNii:
 
     def update_fmap(self):
         """Updated IntendedFor field of fmap JSON sidecars."""
-        print(f"\t Updating fmap jsons for {self._subj}, {self._sess} ...")
+        print(
+            f"\t\t\t\tUpdating fmap jsons for {self._subj}, {self._sess} ..."
+        )
 
         # Get, validate list of fmap json files
         fmap_json_list = sorted(glob.glob(f"{self._subj_raw}/fmap/*json"))

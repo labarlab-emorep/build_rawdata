@@ -1,4 +1,11 @@
-"""Coordinate modules into workflow."""
+"""Coordinate modules into workflow.
+
+ConvertSourcedata is used to check for data and
+validate proper organization. It then triggers
+the respective helper class according to the
+method executed.
+
+"""
 # %%
 import os
 import re
@@ -14,46 +21,6 @@ from dcm_conversion.resources import process, bidsify, behavior
 
 
 # %%
-def _split(sess_task, subid):
-    """Split string for session and task.
-
-    Parameters
-    ----------
-    sess_task : str
-        Contains session and task separated by underscore
-    subid : str
-        Subject idenfier
-
-    Raises
-    ------
-    ValueError, FileNotFoundError
-        If errors exist in directory organization or naming
-
-    Returns
-    -------
-    tuple
-        [0] session string, or None
-        [1] task string, or None
-
-    """
-    try:
-        sess, task = sess_task.split("_")
-        sess_check = True if len(sess) == 8 else False
-        task_check = True if task == "movies" or task == "scenarios" else False
-        if not sess_check or not task_check:
-            raise FileNotFoundError
-        return (sess, f"task-{task}")
-    except (ValueError, FileNotFoundError):
-        print(
-            f"""
-            Improper session name for {subid}: {sess_task[4:]}
-            \tSkipping session ...
-            """
-        )
-        return (None, None)
-
-
-# %%
 class _ProcessMri:
     """Convert DICOMs into NIfTIs and BIDS organize.
 
@@ -62,8 +29,11 @@ class _ProcessMri:
     Methods
     -------
     make_niftis(dcm_source)
+        Convert DICOMs into NIfTI format
     bidsify_niftis()
+        BIDS-organize rawdata NIfTIs
     deface_anat(deriv_dir)
+        Remove face of anatomical
 
     Example
     -------
@@ -104,16 +74,11 @@ class _ProcessMri:
             )
             raise FileNotFoundError("No organized DICOMS found.")
 
-    def make_niftis(self, dcm_source):
+    def make_niftis(self, dcm_source: Union[str, os.PathLike]):
         """Convert sourcedata DICOMs to NIfTIs.
 
         Organizes DICOMs in dcm_source via bin/org_dcms.sh,
         then triggers process.dcm2niix.
-
-        Parameters
-        ----------
-        dcm_source : str, os.PathLike
-            Path to participant's DICOM directgory
 
         """
         # Determine session/task names and organize DICOMs
@@ -150,6 +115,7 @@ class _ProcessMri:
             return
 
         #
+        print(f"\t\tBIDs-ifying NIfTIs for {self._subj}, {self._sess} ...")
         bn = bidsify.BidsifyNii(
             self._subj_raw, self._subj, self._sess, self._task
         )
@@ -157,7 +123,7 @@ class _ProcessMri:
         bn.update_func()
         bn.update_fmap()
 
-    def deface_anat(self, deriv_dir):
+    def deface_anat(self, deriv_dir: Union[str, os.PathLike]):
         """Deface BIDS-organized anat file."""
         if not hasattr(self, "_subj_raw") or not os.path.exists(
             os.path.join(self._subj_raw, "anat")
@@ -171,6 +137,7 @@ class _ProcessMri:
             raise FileNotFoundError(
                 f"No T1w files detected in {self._subj_raw}/anat"
             )
+        print(f"\t\tDefacing anats for {self._subj} ...")
         _ = process.deface(t1_list, deriv_dir, self._subid, self._sess)
 
 
@@ -183,6 +150,7 @@ class _ProcessBeh:
     Methods
     -------
     make_events(task_path)
+        Generate events sidecar from task csv
 
     Example
     -------
@@ -193,6 +161,7 @@ class _ProcessBeh:
 
     def __init__(self, subid: str, raw_path: Union[str, os.PathLike]):
         """Initialize."""
+        print("\tInitializing _ProcessBeh")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -248,7 +217,7 @@ class _ProcessBeh:
         return True
 
     def make_events(self, task_path: Union[str, os.PathLike]):
-        """Generate events files if needed."""
+        """Generate events sidecars from task csv."""
         self._task_path = task_path
         if not self._validate():
             return
@@ -262,10 +231,14 @@ class _ProcessBeh:
             run = "run-0" + task_file.split("run")[1].split("_")[0]
         day_task = task_path.split("day")[1].split("/")[0]
         _day, _tname = day_task.split("_")
-        sess = f"ses-{_day}"
+        sess = f"ses-day{_day}"
         task = f"task-{_tname}"
 
         # Setup output location, make events sidecar
+        print(
+            "\t\tMaking behavior events.tsv for "
+            + f"{self._subj}, {sess} {run}"
+        )
         subj_raw = os.path.join(self._raw_path, f"{self._subj}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
@@ -273,82 +246,42 @@ class _ProcessBeh:
             subj_raw, f"{self._subj}_{sess}_{task}_{run}_events.tsv"
         )
         if not os.path.exists(out_file):
-            print(f"\t Making events file for {task}, {run} ...")
             behavior.events_tsv(
                 task_path, subj_raw, self._subid, sess, task, run
             )
 
 
 # %%
-def _process_rate(source_path, raw_path, subid):
-    """Make rest rating files for subject.
+class _ProcessRate:
+    """Process post resting state endorsements.
 
-    Validate organization of resting state ratings then generates a
-    BIDsy tsv in rawdata/subj/sess/beh of participant responses.
-
-    Parameters
-    ----------
-    source_path : path
-        Location of project sourcedata
-    raw_path : path
-        Location of subject's rawdata directory
-    subid : str
-        Subject identifier
-
-    Returns
+    Methods
     -------
-    None, True
-        None = participant does not have properly-organized rest resposnes
-        True = all processing occured successfully
+    make_rate(rate_path)
+        Organize post resting responses into rawdata beh
 
-    Raises
-    ------
-    FileExistsError
-        When more thatn 2 rating files exist
-    FileNotFoundError
-        When sourcedata file is missing
-
-    Notes
-    -----
-    Skips participant if rest files are not detected or properly organized,
-    named incorrectly, located in the wrong session, or are from the wrong
-    participant.
+    Example
+    -------
+    pr = _ProcessRate("ER0009", "/path/to/rawdata")
+    pr.make_rate("/path/to/sourcedata/ER0009/rest.csv")
 
     """
-    print("\tProcessing rest rating data ...")
 
-    # Check for Scanner_behav dir
-    task_list = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_behav"))
-    if not task_list:
-        print(
-            "\tNo properly organized rest rating files detected "
-            + f"for sub-{subid}, skipping."
+    def __init__(self, subid: str, raw_path: Union[str, os.PathLike]):
+        """Initialize."""
+        print("\tInitializing _ProcessRate")
+        self._subid = subid
+        self._subj = f"sub-{subid}"
+        self._raw_path = raw_path
+
+    def _validate(self) -> bool:
+        """Validate naming and organization of sourcedata rest files."""
+        day = os.path.basename(
+            os.path.dirname(os.path.dirname(self._rate_path))
         )
-        return
+        rate_file = os.path.basename(self._rate_path)
 
-    # Check rest rating files
-    rate_list = sorted(
-        glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*RestRating*csv")
-    )
-    if not rate_list:
-        print(
-            "\tNo properly organized rest rating files detected for "
-            + f"sub-{subid}, skipping."
-        )
-        return
-    elif len(rate_list) > 2:
-        print(
-            f"\tExpected two rest rating files, found :\n\t{rate_list},"
-            + " skipping"
-        )
-        return
-
-    # Convert all rest ratings
-    for rate_path in rate_list:
-
-        # Check that file is in correct location
-        day = os.path.basename(os.path.dirname(os.path.dirname(rate_path)))
-        rate_file = os.path.basename(rate_path)
+        # Check naming of rest file
         try:
             _, _, chk_subid, chk_sess, date_ext = rate_file.split("_")
         except ValueError:
@@ -356,104 +289,96 @@ def _process_rate(source_path, raw_path, subid):
                 f"\tERROR: Improperly named rating file : {rate_file}, "
                 + "skipping."
             )
-            continue
-        if chk_subid[4:] != subid:
+            return False
+
+        # Make sure data is in correct participant's location
+        if chk_subid[4:] != self._subid:
             print(
                 f"\tERROR: Rating file for subject '{chk_subid}' found "
                 + f"in sourcedata/{subid}/{day}/Scanner_behav, skipping."
             )
-            continue
+            return False
+
+        # Check alignment of sessions and task
         if chk_sess[4:] != day[:4]:
             print(
                 f"\tERROR: File for '{chk_sess[4:]}' found in "
                 + f"session : {day}, skipping."
             )
-            continue
+            return False
+        return True
 
-        # Determine session
+    def make_rate(self, rate_path: Union[str, os.PathLike]):
+        """Generate rest ratings beh files."""
+        self._rate_path = rate_path
+        if not self._validate():
+            return
+
+        # Determine session, setup rawdata path
         rate_file = os.path.basename(rate_path)
         sess = "ses-" + rate_file.split("ses-")[1].split("_")[0]
-
-        # Determine, setup rawdata path
-        subj_raw = os.path.join(raw_path, f"sub-{subid}/{sess}/beh")
+        subj_raw = os.path.join(
+            self._raw_path, f"sub-{self._subid}/{sess}/beh"
+        )
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
 
         # Clean file date
+        _, _, chk_subid, chk_sess, date_ext = rate_file.split("_")
         h_date = date_ext.split(".")[0]
         date_time = datetime.strptime(h_date, "%m%d%Y")
         date_str = datetime.strftime(date_time, "%Y-%m-%d")
 
         # Make rawdata file
+        print("\t\tMaking rest ratings.tsv for " + f"{self._subj}, {sess} ...")
         out_file = os.path.join(
-            subj_raw, f"sub-{subid}_{sess}_rest-ratings_{date_str}.tsv"
+            subj_raw, f"sub-{self._subid}_{sess}_rest-ratings_{date_str}.tsv"
         )
         if not os.path.exists(out_file):
-            print(f"\t Making resting rate file for {sess} ...")
             _ = behavior.rest_ratings(
-                rate_path, subj_raw, subid, sess, out_file
+                rate_path, subj_raw, self._subid, sess, out_file
             )
-
-    return True
 
 
 # %%
-def _process_phys(source_path, raw_path, deriv_dir, subid):
-    """Copy physio files.
+class _ProcessPhys:
+    """Manage physio files collected alongside fMRI.
 
-    Rename physio files to BIDS convention, organize them
-    within subject session directories. Generate a tsv with
-    txt extension for Autonomate with values rounded to 6
-    decimals. Validate organization.
+    Both copy and acq and convert into a txt format, write out
+    to rawdata location.
 
-    Parameters
-    ----------
-    source_path : path
-        Location of project sourcedata
-    raw_path : path
-        Location of project rawdata
-    deriv_dir : path
-        Location of derivatives directory
-    subid : str
-        Subject identifier
-
-    Returns
+    Methods
     -------
-    None, True
-        None = participant does not have properly-organized physio data
-        True = all processing occured successfully
+    make_physio(phys_path)
+        Copy acq and generate txt
 
-    Notes
-    -----
-    Skips participant if physio files are not detected or properly organized,
-    named incorrectly, located in the wrong session, or are from the wrong
-    participant.
+    Example
+    -------
+    pp = _ProcessPhys("ER0009", "/path/to/rawdata", "/path/to/derivatives")
+    pb.make_physio("/path/to/sourcedata/ER0009/phys.acq")
 
     """
-    print("\tProcessing physio data ...")
 
-    # Check for Scanner_physio dir
-    phys_dirs = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_physio"))
-    if not phys_dirs:
-        print(f"\tNo physio files detected for sub-{subid}, skipping.")
-        return
+    def __init__(
+        self,
+        subid: str,
+        raw_path: Union[str, os.PathLike],
+        deriv_dir: Union[str, os.PathLike],
+    ):
+        """Initialize."""
+        print("\tInitializing _ProcessPhys")
+        self._subid = subid
+        self._raw_path = raw_path
+        self._deriv_dir = deriv_dir
 
-    # Convert all physio files
-    phys_list = sorted(
-        glob.glob(f"{source_path}/{subid}/day*/Scanner_physio/*acq")
-    )
-    if not phys_list:
-        print(
-            "\tNo properly organized physio files detected for "
-            + f"sub-{subid}, skipping."
+    def _validate(self) -> bool:
+        """Validate naming and organization of sourcedata physio files."""
+        day = os.path.basename(
+            os.path.dirname(os.path.dirname(self._phys_path))
         )
-        return
-    for phys_path in phys_list:
+        phys_file = os.path.basename(self._phys_path)
 
-        # Check that file is in correct location, account for
-        # different naming conventions.
-        day = os.path.basename(os.path.dirname(os.path.dirname(phys_path)))
-        phys_file = os.path.basename(phys_path)
+        # Check naming of file
         try:
             chk_subid, chk_a, chk_b, _ = phys_file.split("_")
         except ValueError:
@@ -461,39 +386,55 @@ def _process_phys(source_path, raw_path, deriv_dir, subid):
                 f"ERROR: Improperly named physio file : {phys_file}, "
                 + "skipping."
             )
-            continue
-        if chk_subid != subid:
+            return False
+
+        # Check match of subject to data
+        if chk_subid != self._subid:
             print(
                 f"\tERROR: Physio file for subject '{chk_subid}' found "
                 + f"in sourcedata/{subid}/{day}/Scanner_physio, skipping."
             )
-            continue
+            return False
+
+        # Check match of day and session
         chk_day = chk_a if "day" in chk_a else chk_b
         if chk_day != day[:4]:
             print(
                 f"\tERROR: File for '{chk_day}' found in "
                 + f"session : {day}, skipping."
             )
-            continue
+            return False
+        return True
+
+    def make_physio(self, phys_path: Union[str, os.PathLike]):
+        """Convert acq to txt format."""
+        self._phys_path = phys_path
+        if not self._validate():
+            return
 
         # Get session, task strings
-        sess_task = "ses-day" + phys_path.split("day")[1].split("/")[0]
-        sess, h_task = _split(sess_task, subid)
-        if not sess:
-            continue
+        sess_task = phys_path.split("day")[1].split("/")[0]
+        _day, _tname = sess_task.split("_")
+        sess = f"ses-day{_day}"
+        task = f"task-{_tname}"
 
         # Get run, deal with resting task
         if "run" in phys_path:
             run = "run-0" + phys_path.split("_run")[1].split(".")[0]
-            task = h_task
         else:
             run = "run-01"
             task = "task-rest"
 
         # Setup output dir/name
-        subj_phys = os.path.join(raw_path, f"sub-{subid}/{sess}/phys")
+        print(
+            "\t\tProcessing physio files for "
+            + f"sub-{self._subid}, {sess} {run}"
+        )
+        subj_phys = os.path.join(
+            self._raw_path, f"sub-{self._subid}/{sess}/phys"
+        )
         subj_deriv = os.path.join(
-            deriv_dir, "scr_autonomate", f"sub-{subid}/{sess}"
+            self._deriv_dir, "scr_autonomate", f"sub-{self._subid}/{sess}"
         )
         for h_dir in [subj_phys, subj_deriv]:
             if not os.path.exists(h_dir):
@@ -501,146 +442,231 @@ def _process_phys(source_path, raw_path, deriv_dir, subid):
         dest_orig = os.path.join(subj_phys, os.path.basename(phys_path))
         dest_acq = os.path.join(
             subj_phys,
-            f"sub-{subid}_{sess}_{task}_{run}_recording-biopack_physio.acq",
+            f"sub-{self._subid}_{sess}_{task}_{run}_"
+            + "recording-biopack_physio.acq",
         )
 
         # Generate tsv dataframe and copy data
-        if not os.path.exists(dest_acq):
-            print(f"\t Converting {sess} physio data : {task} {run}")
-            try:
-                df_phys, _ = nk.read_acqknowledge(phys_path)
-                df_phys = df_phys.round(6)
-                df_phys.to_csv(
-                    re.sub(".acq$", ".txt", dest_acq),
-                    header=False,
-                    index=False,
-                    sep="\t",
-                )
-                shutil.copy(phys_path, dest_orig)
-                os.rename(dest_orig, dest_acq)
-            except:
-                # nk throws the stupid struct.error, hence the naked catch.
-                "\t\t Insufficient data, continuing ..."
-                continue
-
-    return True
+        if os.path.exists(dest_acq):
+            return
+        try:
+            df_phys, _ = nk.read_acqknowledge(phys_path)
+            df_phys = df_phys.round(6)
+            df_phys.to_csv(
+                re.sub(".acq$", ".txt", dest_acq),
+                header=False,
+                index=False,
+                sep="\t",
+            )
+            shutil.copy(phys_path, dest_orig)
+            os.rename(dest_orig, dest_acq)
+        except:
+            # nk throws the stupid struct.error, hence the naked catch.
+            "\t\t\tInsufficient data, continuing ..."
+            return
 
 
 # %%
-def dcm_worflow(
-    subid,
-    source_path,
-    raw_path,
-    deriv_dir,
-    do_deface,
-):
+class ConvertSourcedata:
     """Conduct DICOM conversion worklow.
 
     Coordinate resources for MRI conversion, BIDSification,
     generating events sidecars, and moving physio data.
     Validate organization of sourcedata.
 
-    Parameters
-    ----------
-    subid : str
-        Subject identifier in sourcedata
-    source_path : path
-        Location of project sourcedata
-    raw_path : path
-        Location of project rawdata
-    deriv_dir : path
-        Location of project derivatives
-    do_deface : bool
-        Whether to deface T1w files
-
-    Returns
+    Methods
     -------
-    bool
-        Whether all processing finished successfully
+    chk_sourcedata(subid)
+        Check for basic organization of subject sourcedata
+    convert_mri()
+        Convert MRI sourcedata to BIDS-formatted rawdata
+    convert_beh()
+        Make BIDS events sidecars
+    convert_rate()
+        Process post resting state endorsements
+    convert_phys()
+        Copy and make txt from acq file
+
+    Example
+    -------
+    cs = ConvertSourcedata(
+        "/path/to/sourcedata",
+        "/path/to/rawdata",
+        "/path/to/derivatives",
+        True,
+    )
+    cs.chk_sourcedata("ER0909")
+    cs.convert_mri()
+    cs.convert_beh()
+    cs.convert_phys()
+    cs.convert_rate()
 
     Notes
     -----
-    Skips participant sourcedata is not setup or session directories
-    are improperly named.
+    Order is important, chk_sourcedata() needs to be executed first and
+    convert_mri() needs to be executed second.
 
     """
-    print(f"\nProcessing data for {subid} ...")
 
-    # Validate sourcedata session names
-    print("\tChecking sourcedata session names ...")
-    subj_source = os.path.join(source_path, subid)
-    sess_list = [x for x in os.listdir(subj_source) if fnmatch(x, "day*")]
-    if not sess_list:
-        print(
-            "\tNo sourcedata properly named session directories "
-            + "detected, skipping."
-        )
-        return False
-    for sess in sess_list:
-        try:
-            day, task = sess.split("_")
-        except ValueError:
+    def __init__(self, source_path, raw_path, deriv_dir, do_deface):
+        """Initialize.
+
+        Parameters
+        ----------
+        source_path : path
+            Location of project sourcedata
+        raw_path : path
+            Location of project rawdata
+        deriv_dir : path
+            Location of project derivatives
+        do_deface : bool
+            Whether to deface T1w files
+
+        """
+        print("Initializing ConvertSourcedata")
+        self._source_path = source_path
+        self._raw_path = raw_path
+        self._deriv_dir = deriv_dir
+        self._do_deface = do_deface
+
+    def chk_sourcedata(self, subid):
+        """Validate sourcedata organization.
+
+        Parameters
+        ----------
+        subid : str
+            Subject identifier in sourcedata
+
+        Returns
+        -------
+        bool
+            If basic check passed
+
+        """
+        print("\tChecking sourcedata session names ...")
+        self._subid = subid
+
+        # Check for session data
+        subj_source = os.path.join(self._source_path, subid)
+        sess_list = [x for x in os.listdir(subj_source) if fnmatch(x, "day*")]
+        if not sess_list:
             print(
-                "\tERROR: Incorrect sourcedata session directory "
-                + f"name : {sess}"
+                "\tNo sourcedata properly named session directories "
+                + "detected, skipping."
             )
             return False
-        if len(day) != 4 or not (task == "movies" or task == "scenarios"):
+
+        # Check naming of session data
+        for sess in sess_list:
+            try:
+                day, task = sess.split("_")
+            except ValueError:
+                print(
+                    "\tERROR: Incorrect sourcedata session directory "
+                    + f"name : {sess}"
+                )
+                return False
+            if len(day) != 4 or not (task == "movies" or task == "scenarios"):
+                print(
+                    "\tERROR: Incorrect sourcedata session directory "
+                    + f"name : {sess}"
+                )
+                return False
+        return True
+
+    def convert_mri(self):
+        """Trigger conversion of MRI data."""
+        dcm_list = sorted(
+            glob.glob(f"{self._source_path}/{self._subid}/day*/DICOM")
+        )
+        if not dcm_list:
             print(
-                "\tERROR: Incorrect sourcedata session directory "
-                + f"name : {sess}"
+                "\tNo properly organized DICOMs detected for "
+                + f"sub-{self._subid}. Skipping."
             )
-            return False
+            return
 
-    # Get DICOM directory paths
-    dcm_list = sorted(glob.glob(f"{source_path}/{subid}/day*/DICOM"))
-    if not dcm_list:
-        print(
-            f"\tNo properly organized DICOMs detected for sub-{subid}. "
-            + "Skipping."
+        # Process MRI data
+        mk_mri = _ProcessMri(self._subid, self._raw_path)
+        for dcm_source in dcm_list:
+            chk_dcm = glob.glob(f"{dcm_source}/**/*.dcm", recursive=True)
+            if not chk_dcm:
+                print(f"\tNo DICOMs found at {dcm_source}, skipping ...")
+                continue
+
+            # Make NIfTI, bidsify, and deface
+            mk_mri.make_niftis(dcm_source)
+            mk_mri.bidsify_niftis()
+            if self._do_deface:
+                mk_mri.deface_anat(self._deriv_dir)
+
+    def convert_beh(self):
+        """Trigger conversion of behavioral data."""
+        beh_list = sorted(
+            glob.glob(
+                f"{self._source_path}/{self._subid}/day*"
+                + "/Scanner_behav/*run*csv"
+            )
         )
-        return False
+        if not beh_list:
+            print(
+                "\tNo properly organized task files detected for "
+                + f"sub-{self._subid}. Skipping."
+            )
+            return
+        mk_beh = _ProcessBeh(self._subid, self._raw_path)
+        for task_path in beh_list:
+            mk_beh.make_events(task_path)
 
-    # Process MRI data
-    mk_mri = _ProcessMri(subid, raw_path)
-    for dcm_source in dcm_list:
-        chk_dcm = glob.glob(f"{dcm_source}/**/*.dcm", recursive=True)
-        if not chk_dcm:
-            print(f"\tNo DICOMs found at {dcm_source}, skipping ...")
-            continue
-
-        # Make NIfTI, bidsify, and deface
-        mk_mri.make_niftis(dcm_source)
-        mk_mri.bidsify_niftis()
-        if do_deface:
-            mk_mri.deface_anat(deriv_dir)
-
-    # Check for Scanner_behav dir
-    task_list = sorted(glob.glob(f"{source_path}/{subid}/day*/Scanner_behav"))
-    if not task_list:
-        print(
-            "\tNo properly organized task files detected for "
-            + f"sub-{subid}. Skipping."
+    def convert_rate(self):
+        """Trigger conversion of post-rest endorsement ratings."""
+        rate_list = sorted(
+            glob.glob(
+                f"{self._source_path}/{self._subid}/day*/"
+                + "Scanner_behav/*RestRating*csv"
+            )
         )
-        return
+        if not rate_list:
+            print(
+                "\tNo properly organized rest rating files detected for "
+                + f"sub-{self._subid}, skipping."
+            )
+            return
+        elif len(rate_list) > 2:
+            print(
+                f"\tExpected two rest rating files, found :\n\t{rate_list},"
+                + " skipping"
+            )
+            return
 
-    # Create events files for all task runs
-    beh_list = sorted(
-        glob.glob(f"{source_path}/{subid}/day*/Scanner_behav/*run*csv")
-    )
-    if not beh_list:
-        print(
-            "\tNo properly organized task files detected for "
-            + f"sub-{subid}. Skipping."
+        # Convert all rest ratings
+        mk_rate = _ProcessRate(self._subid, self._raw_path)
+        for rate_path in rate_list:
+            mk_rate.make_rate(rate_path)
+
+    def convert_phys(self):
+        """Trigger conversion of physiology data."""
+        phys_dirs = sorted(
+            glob.glob(f"{self._source_path}/{self._subid}/day*/Scanner_physio")
         )
-        return
-    mk_beh = _ProcessBeh(subid, raw_path)
-    for task_path in beh_list:
-        mk_beh.make_events(task_path)
+        if not phys_dirs:
+            print(
+                f"\tNo physio files detected for sub-{self._subid}, skipping."
+            )
+            return
 
-    return
-    # _ = _process_beh(source_path, raw_path, subid)
-    _ = _process_rate(source_path, raw_path, subid)
-    _ = _process_phys(source_path, raw_path, deriv_dir, subid)
-    print(f"\t Done processing data for {subid}.")
-    return True
+        # Convert all physio files
+        phys_list = sorted(
+            glob.glob(
+                f"{self._source_path}/{self._subid}/day*/Scanner_physio/*acq"
+            )
+        )
+        if not phys_list:
+            print(
+                "\tNo properly organized physio files detected for "
+                + f"sub-{self._subid}, skipping."
+            )
+            return
+        mk_phys = _ProcessPhys(self._subid, self._raw_path, self._deriv_dir)
+        for phys_path in phys_list:
+            mk_phys.make_physio(phys_path)

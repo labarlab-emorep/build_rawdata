@@ -116,14 +116,17 @@ def main():
         )
 
     # Start workflow for each subject
+    wf = workflow.ConvertSourcedata(
+        source_path, raw_path, deriv_dir, do_deface
+    )
     for subid in sub_list:
-        _ = workflow.dcm_worflow(
-            subid,
-            source_path,
-            raw_path,
-            deriv_dir,
-            do_deface,
-        )
+        chk_pass = wf.chk_sourcedata(subid)
+        if not chk_pass:
+            continue
+        wf.convert_mri()
+        wf.convert_beh()
+        wf.convert_rate()
+        wf.convert_phys()
 
 
 if __name__ == "__main__":
