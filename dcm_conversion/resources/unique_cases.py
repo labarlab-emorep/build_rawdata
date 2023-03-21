@@ -93,8 +93,8 @@ def fmap_issue(sess, subid, bold_list):
     Returns
     -------
     list, None
-        List of lists, where each sub-list contains the bold
-        images to be associated with a given fmap file.
+        List of lists, where each list[0] contains bold images
+        associated with fmap1, and list[1] for fmap2.
 
     """
     # Get user-specified unique_fmaps.json, check for subject and session
@@ -106,9 +106,12 @@ def fmap_issue(sess, subid, bold_list):
     ):
         return None
 
-    # Validate user-specified unique_fmaps.json setup
+    # Get subject, session info
+    map_bold_fmap = []
     sess_dict = subs_to_tend[subid][sess]
     for fmap_key, map_list in sess_dict.items():
+
+        # Validate user-specified unique_fmaps.json setup
         if fmap_key not in ["fmap1", "fmap2"]:
             raise KeyError(
                 "Unexpected key in reference_files/unique_fmap.json:"
@@ -127,10 +130,8 @@ def fmap_issue(sess, subid, bold_list):
                 + f"unique_fmap.json: {map_list[0]}"
             )
 
-    # For each fmap, create a list of bold file names
-    # that matches the list of keys.
-    map_bold_fmap = []
-    for fmap_key, map_list in sess_dict.items():
+        # For each fmap, create a list of bold file names
+        # that matches the list of keys.
         match_list = []
         for bold_key in map_list:
             task, run = bold_key.split("_")
