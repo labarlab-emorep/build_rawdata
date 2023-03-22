@@ -131,4 +131,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # Require proj env
+    env_found = [x for x in sys.path if "emorep" in x]
+    if not env_found:
+        print("\nERROR: missing required project environment 'emorep'.")
+        print("\tHint: $labar_env emorep\n")
+        sys.exit(1)
     main()
