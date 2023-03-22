@@ -89,13 +89,12 @@ class _ProcessMri:
         self._task = f"task-{_tname}"
         self._organize_dcms()
 
-        #
+        # Setup, check for previous, and run dcm conversion
         print(f"\t\tMaking NIfTIs for {self._subj}, {self._sess} ...")
         self._subj_raw = os.path.join(self._raw_path, self._subj, self._sess)
         if not os.path.exists(self._subj_raw):
             os.makedirs(self._subj_raw)
 
-        # Check for previous BIDS
         chk_anat = glob.glob(f"{self._subj_raw}/anat/*.nii.gz")
         if chk_anat:
             return
@@ -109,12 +108,11 @@ class _ProcessMri:
                 + f" to be run first."
             )
 
-        # Check for previous BIDS
-        chk_bids = glob.glob(f"{self._subj_raw}/fmap/*.nii.gz")
+        # Check for previous BIDS, run bidsify
+        chk_bids = glob.glob(f"{self._subj_raw}/anat/*.nii.gz")
         if chk_bids:
             return
 
-        #
         print(f"\t\tBIDs-ifying NIfTIs for {self._subj}, {self._sess} ...")
         bn = bidsify.BidsifyNii(
             self._subj_raw, self._subj, self._sess, self._task

@@ -120,6 +120,7 @@ def main():
         source_path, raw_path, deriv_dir, do_deface
     )
     for subid in sub_list:
+        print(f"\nWorking on {subid}")
         chk_pass = wf.chk_sourcedata(subid)
         if not chk_pass:
             continue
