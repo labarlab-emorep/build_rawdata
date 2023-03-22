@@ -5,6 +5,9 @@ or a protocol will change, resulting in special cases that
 need to be treated specially by the package.
 
 """
+import json
+import importlib.resources as pkg_resources
+from dcm_conversion import reference_files
 
 
 def wash_issue(trial_types, task, sess, subid):
@@ -69,3 +72,78 @@ def wash_issue(trial_types, task, sess, subid):
     if subid in issue_list:
         trial_types["wash"] = wash_update[task]
     return trial_types
+
+
+def fmap_issue(sess, subid, bold_list):
+    """Provide lists of func runs to associate with each fmap.
+
+    For various reasons, certain functional runs may need to
+    be paired with specific fmap acquisitions for certain participants.
+    This function provides those mappings.
+
+    Parameters
+    ----------
+    sess : str
+        BIDS session string
+    subid : str
+        Subject identifier
+    bold_list: list
+        List of bold images
+
+    Returns
+    -------
+    list, None
+        List of lists, where each list[0] contains bold images
+        associated with fmap1, and list[1] for fmap2.
+
+    """
+    # Get user-specified unique_fmaps.json, check for subject and session
+    with pkg_resources.open_text(reference_files, "unique_fmap.json") as jf:
+        subs_to_tend = json.load(jf)
+    if (
+        subid not in subs_to_tend.keys()
+        or sess not in subs_to_tend[subid].keys()
+    ):
+        return None
+
+    # Get subject, session info
+    map_bold_fmap = []
+    sess_dict = subs_to_tend[subid][sess]
+    for fmap_key, map_list in sess_dict.items():
+
+        # Validate user-specified unique_fmaps.json setup
+        if fmap_key not in ["fmap1", "fmap2"]:
+            raise KeyError(
+                "Unexpected key in reference_files/unique_fmap.json:"
+                + f"{subid} {sess} {fmap_key}"
+            )
+        try:
+            task, run = map_list[0].split("_")
+            if task not in ["scenarios", "movies"]:
+                raise ValueError(
+                    "Unexpected task in reference_files/"
+                    + f"unique_fmap.json: {task}"
+                )
+        except ValueError:
+            raise ValueError(
+                "Unexpected task format in reference_files/"
+                + f"unique_fmap.json: {map_list[0]}"
+            )
+
+        # For each fmap, create a list of bold file names
+        # that matches the list of keys.
+        match_list = []
+        for bold_key in map_list:
+            task, run = bold_key.split("_")
+            match_bold = [
+                x for x in bold_list if f"task-{task}_run-{run}" in x
+            ]
+            if len(match_bold) == 1:
+                match_list.append(match_bold[0])
+            elif len(match_bold) > 1:
+                raise ValueError(
+                    "Too many fmap-bold matches, check task"
+                    + f" and run values: {bold_key}"
+                )
+        map_bold_fmap.append(match_list)
+    return map_bold_fmap

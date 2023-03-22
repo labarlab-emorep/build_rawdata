@@ -17,7 +17,7 @@ import textwrap
 import pydeface  # left here for generatings requirements files
 
 
-def _error_msg(msg, stdout, stderr):
+def error_msg(msg: str, stdout: str, stderr: str):
     """Print stdout and stderr."""
     error_message = f"""
             {msg}
@@ -36,9 +36,8 @@ def _error_msg(msg, stdout, stderr):
 def dcm2niix(subj_source, subj_raw, subid, sess):
     """Conduct dcm2niix.
 
-    Point dcm2niix at a DICOM directory, rename NIfTI
-    files according to BIDs specifications, and update
-    fmap json files with "IntendedFor" field.
+    Convert all DICOMs existing in subj_source and write
+    out to subj_raw.
 
     Parameters
     ----------
@@ -55,12 +54,6 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
     -----
     Writes dcm2niix-named NIfTI files to subject's rawdata.
 
-    Returns
-    -------
-    tuple
-        [0] = list of output niis
-        [1] = list of output jsons
-
     Raises
     ------
     FileNotFoundError
@@ -68,6 +61,11 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
         If the number of NIfTI and JSON are != in subject rawdata.
 
     """
+    # Check for previous work
+    nii_list = sorted(glob.glob(f"{subj_raw}/*.nii.gz"))
+    if nii_list:
+        return
+
     # Construct and run dcm2niix cmd
     bash_cmd = f"""\
         dcm2niix \
@@ -81,24 +79,20 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
     job_out, job_err = h_sp.communicate()
     h_sp.wait()
 
-    # Clean localizers, make nii/json lists
+    # Clean localizers, check that dcm2niix worked
     for rm_file in glob.glob(f"{subj_raw}/DICOM_localizer*"):
         os.remove(rm_file)
     nii_list = sorted(glob.glob(f"{subj_raw}/*.nii.gz"))
     json_list = sorted(glob.glob(f"{subj_raw}/*.json"))
-
-    # Check that dcm2nix worked
-    if job_out:
-        job_out = job_out.decode("utf-8")
-    if job_err:
-        job_err = job_err.decode("utf-8")
     if not nii_list:
-        _error_msg("dcm2niix failed!", job_out, job_err)
-        raise FileNotFoundError("No nii files detected.")
+        error_msg(
+            "dcm2niix failed!",
+            job_out.decode("utf-8"),
+            job_err.decode("utf-8"),
+        )
+        raise FileNotFoundError("No NIfTI files detected.")
     elif len(nii_list) != len(json_list):
-        raise FileNotFoundError("Unbalanced json and nii lists.")
-
-    return (nii_list, json_list)
+        raise FileNotFoundError("Unbalanced number of NIfTI and JSON files.")
 
 
 def deface(t1_list, deriv_dir, subid, sess):
@@ -123,7 +117,7 @@ def deface(t1_list, deriv_dir, subid, sess):
 
     Returns
     -------
-    path
+    list
         Location of defaced T1w file
 
     Raises
@@ -139,7 +133,7 @@ def deface(t1_list, deriv_dir, subid, sess):
 
     deface_list = []
     for t1_path in t1_list:
-        print(f"\t Defacing T1w for sub-{subid}, {sess} ...")
+        print(f"\t\t\tDefacing T1w for sub-{subid}, {sess} ...")
 
         # Determine input, outut paths and name
         t1_file = os.path.basename(t1_path)

@@ -24,14 +24,17 @@ import sys
 import glob
 import textwrap
 from argparse import ArgumentParser, RawTextHelpFormatter
-from dcm_conversion.resources import bidsify, workflow
+from dcm_conversion import workflow
+from dcm_conversion.resources import bidsify
+import dcm_conversion._version as ver
 
 
 # %%
 def get_args():
     """Get and parse arguments."""
+    ver_info = f"\nVersion : {ver.__version__}\n\n"
     parser = ArgumentParser(
-        description=__doc__, formatter_class=RawTextHelpFormatter
+        description=ver_info + __doc__, formatter_class=RawTextHelpFormatter
     )
     parser.add_argument(
         "--deface",
@@ -87,7 +90,6 @@ def get_args():
 # %%
 def main():
     """Coordinate module resources."""
-    # Receive arguments
     args = get_args().parse_args()
     proj_dir = args.proj_dir
     sub_all = args.sub_all
@@ -114,15 +116,25 @@ def main():
         )
 
     # Start workflow for each subject
+    wf = workflow.ConvertSourcedata(
+        source_path, raw_path, deriv_dir, do_deface
+    )
     for subid in sub_list:
-        _ = workflow.dcm_worflow(
-            subid,
-            source_path,
-            raw_path,
-            deriv_dir,
-            do_deface,
-        )
+        print(f"\nWorking on {subid}")
+        chk_pass = wf.chk_sourcedata(subid)
+        if not chk_pass:
+            continue
+        wf.convert_mri()
+        wf.convert_beh()
+        wf.convert_rate()
+        wf.convert_phys()
 
 
 if __name__ == "__main__":
+    # Require proj env
+    env_found = [x for x in sys.path if "emorep" in x]
+    if not env_found:
+        print("\nERROR: missing required project environment 'emorep'.")
+        print("\tHint: $labar_env emorep\n")
+        sys.exit(1)
     main()

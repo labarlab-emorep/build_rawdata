@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+exec(open("dcm_conversion/_version.py").read())
+
 setup(
     name="dcm_conversion",
-    version="0.4.3",
+    version=__version__,  # noqa: F821
     packages=find_packages(),
     entry_points={
         "console_scripts": [
@@ -10,6 +12,8 @@ setup(
         ]
     },
     scripts=["dcm_conversion/bin/org_dcms.sh"],
+    include_package_data=True,
+    package_data={"": ["reference_files/*.json"]},
     install_requires=[
         "bioread>=3.0.0",
         "neurokit2>=0.2.1",
@@ -18,6 +22,6 @@ setup(
         "pandas>=1.4.3",
         "pydeface>=2.0.2",
         "pytest>=7.1.2",
-        "setuptools>=45.2.0",
+        "setuptools>=65.5.1",
     ],
 )

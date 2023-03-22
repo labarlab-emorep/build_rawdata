@@ -1,165 +1,205 @@
-"""Methods for making data BIDS compliant.
-
-Notes
------
-BIDS file naming is EmoRep specific (_switch_name).
-
-"""
+"""Methods for making data BIDS compliant."""
 import os
 import glob
 import shutil
 import json
+from typing import Union
+from dcm_conversion.resources import unique_cases
 
 
-def _switch_name(dcm2niix_name, subid, sess, task="", run: str = ""):
-    """Determine EmoRep file types.
+class BidsifyNii:
+    """Move dcm2niix output in rawdata into BIDS organiztion.
 
-    Use default filename string output by dcm2niix to
-    determine the type and name of NIfTI file.
-
-    Parameters
-    ----------
-    dcm2niix_name : str
-        Split dcm2niix name, preceding year date
-        e.g. DICOM_EmoRep_anat for DICOM_EmoRep_anat_20220101_foo.nii.gz
-    subid : str
-        Subject identifier, BIDS label
-    sess : str
-        BIDS-formatted session string
-    task : str, optional
-        BIDS-formatted task string
-    run : str, optional
-        Run number, BIDS label
-
-    Returns
+    Methods
     -------
-    tuple
-        [0] = scan type (anat, func, fmap)
-        [1] = BIDS-formatted file name, sans extension
+    bids_nii()
+        BIDS-organize rawdata NIfTIs
+    update_func()
+        Update func json with TaskName
+    update_fmap()
+        Update fmap json with IntendedFor
+
+    Example
+    -------
+    bn = BidsifyNii(
+        "/path/to/rawdata/sub-1234/ses-day1",
+        "sub-1234",
+        "ses-day1",
+        "task-foo",
+    )
+    bn.bids_nii()
+    bn.update_func()
+    bn.update_fmap()
 
     """
-    # Start BIDS file name string
-    base_str = f"sub-{subid}_{sess}"
 
-    # Key is from dcm2niix file names, value tuple contains
-    # BIDS directory and file names.
-    name_dict = {
-        "DICOM_EmoRep_anat": ("anat", f"{base_str}_T1w"),
-        f"DICOM_EmoRep_run{run}": (
-            "func",
-            f"{base_str}_{task}_run-{run}_bold",
-        ),
-        f"DICOM_Rest_run{run}": (
-            "func",
-            f"{base_str}_task-rest_run-{run}_bold",
-        ),
-        "DICOM_Field_Map_P_A": ("fmap", f"{base_str}_acq-rpe_dir-PA_epi"),
-    }
-    return name_dict[dcm2niix_name]
+    def __init__(self, subj_raw, subj, sess, task):
+        """Initialize."""
+        print("\t\t\tInitializing BidsifyNii")
+        self._subj_raw = subj_raw
+        self._subj = subj
+        self._sess = sess
+        self._task = task
 
-
-def bidsify_nii(nii_list, json_list, subj_raw, subid, sess, task):
-    """Move data into BIDS organization.
-
-    Rename/reorganize NIfTI files according to BIDs specifications,
-    and update fmap json files with "IntendedFor" field.
-
-    Parameters
-    ----------
-    nii_list : list
-        Paths to nii files output by dcm2niix
-    json_list : list
-        Paths to json files output by dcm2niix
-    subj_raw : path
-        Subject's rawdata directory
-    subid : str
-        Subject identifier
-    sess : str
-        BIDS-formatted session string
-    task : str
-        BIDS-formatted task string
-
-    Returns
-    -------
-    t1_list : list
-        Path and name of session T1w files
-
-    Raises
-    ------
-    FileNotFoundError
-        If BIDS-organized T1w files are not found for the session.
-
-    """
-    print(f"\t Renaming, organizing NIfTIs for sub-{subid}, {sess} ...")
-
-    # Rename and move each file in nii, json lists
-    nii_json_list = nii_list + json_list
-    for h_file in nii_json_list:
-
-        # Get first part of file name, use as key in dict-switch to
-        # get (new) BIDS directory and file name.
-        dcm2niix_name = os.path.basename(h_file).split("_20")[0]
-        if "run" in dcm2niix_name:
-            run = dcm2niix_name.split("run")[1]
-            bids_dir, bids_name = _switch_name(
-                dcm2niix_name, subid, sess, task, run
+    def bids_nii(self):
+        """BIDS-organize NIfTI and JSON files."""
+        # Find files for organizing
+        nii_list = sorted(glob.glob(f"{self._subj_raw}/*.nii.gz"))
+        json_list = sorted(glob.glob(f"{self._subj_raw}/*.json"))
+        if not nii_list:
+            raise FileNotFoundError(
+                f"Expected raw dcm2niix output in {self._subj_raw}"
             )
-        else:
-            bids_dir, bids_name = _switch_name(dcm2niix_name, subid, sess)
+        nii_json_list = nii_list + json_list
 
-        # Setup path to new BIDs directory
-        bids_path = os.path.join(os.path.dirname(h_file), bids_dir)
-        if not os.path.exists(bids_path):
-            os.makedirs(bids_path)
-
-        # Determine extension, move and rename json, nii files
-        file_ext = (
-            ".json" if os.path.splitext(h_file)[1] == ".json" else ".nii.gz"
+        # Rename, organize each nii/json file
+        print(
+            "\t\t\t\tRenaming, organizing NIfTIs for "
+            + f"{self._subj}, {self._sess} ..."
         )
-        shutil.move(h_file, f"{bids_path}/{bids_name}{file_ext}")
+        for h_file in nii_json_list:
 
-    # Make T1w list for return
-    t1_list = sorted(glob.glob(f"{subj_raw}/anat/*T1w.nii.gz"))
-    if not t1_list:
-        raise FileNotFoundError("No BIDS-organized T1w files detected.")
+            # Get first part of file name, use as key in dict-switch to
+            # get (new) BIDS directory and file name. Manage new fmap
+            # protocol names being called P_A_run1 and P_A_run_2.
+            dcm2niix_name = os.path.basename(h_file).split("_20")[0]
+            if "run" in dcm2niix_name:
+                run = dcm2niix_name.split("run")[1]
+                run = run[1:] if run[0] == "_" else run
+                run = run.zfill(2)
+                bids_dir, bids_name = self._switch_name(dcm2niix_name, run)
+            else:
+                bids_dir, bids_name = self._switch_name(dcm2niix_name)
 
-    # Update fmap json with "IntendedFor" field
-    print(f"\t Updating fmap jsons for sub-{subid}, {sess} ...")
-    try:
-        # Extract session and file name, per BIDS validator reqs
-        bold_list = [
-            x.split(f"sub-{subid}/")[1]
-            for x in sorted(glob.glob(f"{subj_raw}/func/*bold.nii.gz"))
-        ]
+            # Setup path to new BIDs directory
+            bids_path = os.path.join(os.path.dirname(h_file), bids_dir)
+            if not os.path.exists(bids_path):
+                os.makedirs(bids_path)
 
-        # Open fmap json
-        fmap_json = glob.glob(f"{subj_raw}/fmap/*json")[0]
-        with open(fmap_json) as jf:
-            fmap_dict = json.load(jf)
+            # Determine extension, move and rename json, nii files
+            file_ext = (
+                ".json"
+                if os.path.splitext(h_file)[1] == ".json"
+                else ".nii.gz"
+            )
+            shutil.move(h_file, f"{bids_path}/{bids_name}{file_ext}")
 
-        # Update fmap json with intended list, write
-        fmap_dict["IntendedFor"] = bold_list
-        with open(fmap_json, "w") as jf:
-            json.dump(fmap_dict, jf)
-    except IndexError:
-        print(f"\t\t No fmaps detected for sub-{subid}, skipping.")
+        # Check that bids org worked
+        t1_list = sorted(glob.glob(f"{self._subj_raw}/anat/*T1w.nii.gz"))
+        if not t1_list:
+            raise FileNotFoundError("No BIDS-organized T1w files detected.")
 
-    # Update func jsons with "TaskName" Field, account for task/rest
-    print(f"\t Updating func jsons for sub-{subid}, {sess} ...")
-    func_json_all = sorted(glob.glob(f"{subj_raw}/func/*_bold.json"))
-    for func_json in func_json_all:
+    def update_func(self):
+        """Updated TaskName field of func JSON sidecars."""
+        # Update func jsons with "TaskName" Field, account for task/rest
+        print(
+            f"\t\t\t\tUpdating func jsons for {self._subj}, {self._sess} ..."
+        )
+        func_json_all = sorted(glob.glob(f"{self._subj_raw}/func/*_bold.json"))
+        if not func_json_all:
+            raise ValueError(
+                "No BIDS-organized func files found, try BidsifyNii.bids_nii"
+            )
+        for func_json in func_json_all:
+            h_task = func_json.split("_task-")[1].split("_")[0]
+            self._update_json(func_json, "TaskName", h_task)
 
-        # Get task name, open json
-        h_task = func_json.split("_task-")[1].split("_")[0]
-        with open(func_json) as jf:
-            func_dict = json.load(jf)
+    def update_fmap(self):
+        """Updated IntendedFor field of fmap JSON sidecars."""
+        print(
+            f"\t\t\t\tUpdating fmap jsons for {self._subj}, {self._sess} ..."
+        )
 
-        # Update, write json
-        func_dict["TaskName"] = h_task
-        with open(func_json, "w") as jf:
-            json.dump(func_dict, jf)
+        # Get, validate list of fmap json files
+        fmap_json_list = sorted(glob.glob(f"{self._subj_raw}/fmap/*json"))
+        if not fmap_json_list:
+            raise ValueError(
+                "No BIDS-organized fmap files found, try BidsifyNii.bids_nii"
+            )
+        fmap_count = len(fmap_json_list)
+        if fmap_count > 2:
+            raise ValueError("More than 2 fmap images found!")
 
-    return t1_list
+        # Get bold files
+        try:
+            bold_list = [
+                x.split(f"{self._subj}/")[1]
+                for x in sorted(
+                    glob.glob(f"{self._subj_raw}/func/*bold.nii.gz")
+                )
+            ]
+        except IndexError:
+            raise ValueError(
+                "No BIDS-organized func files found, try BidsifyNii.bids_nii"
+            )
+
+        # Update fmap jsons with intended lists - for old protocol (fmap==1)
+        # assign all funcs to fmap. For new protocol (fmap==2) split runs
+        # between two fmaps.
+        if fmap_count == 1:
+            self._update_json(fmap_json_list[0], "IntendedFor", bold_list)
+        elif fmap_count == 2:
+
+            # Manage special cases
+            subid = self._subj.split("-")[1]
+            map_bold_fmap = unique_cases.fmap_issue(
+                self._sess, subid, bold_list
+            )
+            if map_bold_fmap:
+                for fmap_json, map_bold in zip(fmap_json_list, map_bold_fmap):
+                    self._update_json(fmap_json, "IntendedFor", map_bold)
+                return
+
+            # Regular cases -- ensure rest is at end of list
+            rest_idx = [x for x, y in enumerate(bold_list) if "task-rest" in y]
+            if rest_idx:
+                bold_list.append(bold_list.pop(rest_idx[0]))
+            map_bold_fmap = []
+            map_bold_fmap.append(bold_list[:4])
+            map_bold_fmap.append(bold_list[4:])
+            for fmap_json, map_bold in zip(fmap_json_list, map_bold_fmap):
+                self._update_json(fmap_json, "IntendedFor", map_bold)
+
+    def _update_json(
+        self,
+        bids_json: Union[str, os.PathLike],
+        field: str,
+        values: Union[list, str],
+    ):
+        """Add, update field to BIDS JSON sidecar."""
+        with open(bids_json) as jf:
+            sidecar_dict = json.load(jf)
+        sidecar_dict[field] = values
+        with open(bids_json, "w") as jf:
+            json.dump(sidecar_dict, jf)
+
+    def _switch_name(self, dcm2niix_name: str, run: str = None) -> dict:
+        """Return rawdata BIDS directory and file name."""
+        # Key is from dcm2niix file names, value tuple contains
+        # BIDS directory and file names. Manage new fmap
+        # protocol names being called P_A_run1 and P_A_run_2.
+        base_str = f"{self._subj}_{self._sess}"
+        name_dict = {
+            "DICOM_EmoRep_anat": ("anat", f"{base_str}_T1w"),
+            f"DICOM_EmoRep_run{run}": (
+                "func",
+                f"{base_str}_{self._task}_run-{run}_bold",
+            ),
+            f"DICOM_Rest_run{run}": (
+                "func",
+                f"{base_str}_task-rest_run-{run}_bold",
+            ),
+            "DICOM_Field_Map_P_A": ("fmap", f"{base_str}_acq-rpe_dir-PA_epi"),
+            f"DICOM_Field_Map_P_A_run1": (
+                "fmap",
+                f"{base_str}_acq-rpe_dir-PA_run-{run}_epi",
+            ),
+            f"DICOM_Field_Map_P_A_run_2": (
+                "fmap",
+                f"{base_str}_acq-rpe_dir-PA_run-{run}_epi",
+            ),
+        }
+        return name_dict[dcm2niix_name]
 
 
 def bidsify_exp(raw_path):
