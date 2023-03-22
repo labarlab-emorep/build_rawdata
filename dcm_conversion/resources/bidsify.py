@@ -140,22 +140,23 @@ class BidsifyNii:
             self._update_json(fmap_json_list[0], "IntendedFor", bold_list)
         elif fmap_count == 2:
 
-            # Get special cases or split runs, ensure rest is at end
-            # of list.
+            # Manage special cases
             subid = self._subj.split("-")[1]
             map_bold_fmap = unique_cases.fmap_issue(
                 self._sess, subid, bold_list
             )
-            if not map_bold_fmap:
-                rest_idx = [
-                    x for x, y in enumerate(bold_list) if "task-rest" in y
-                ]
-                if rest_idx:
-                    bold_list = bold_list.append(bold_list.pop(rest_idx[0]))
-                map_bold_fmap = []
-                map_bold_fmap.append(bold_list[:4])
-                map_bold_fmap.append(bold_list[4:])
+            if map_bold_fmap:
+                for fmap_json, map_bold in zip(fmap_json_list, map_bold_fmap):
+                    self._update_json(fmap_json, "IntendedFor", map_bold)
+                return
 
+            # Regular cases -- ensure rest is at end of list
+            rest_idx = [x for x, y in enumerate(bold_list) if "task-rest" in y]
+            if rest_idx:
+                bold_list.append(bold_list.pop(rest_idx[0]))
+            map_bold_fmap = []
+            map_bold_fmap.append(bold_list[:4])
+            map_bold_fmap.append(bold_list[4:])
             for fmap_json, map_bold in zip(fmap_json_list, map_bold_fmap):
                 self._update_json(fmap_json, "IntendedFor", map_bold)
 

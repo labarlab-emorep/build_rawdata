@@ -426,7 +426,7 @@ class _ProcessPhys:
         # Setup output dir/name
         print(
             "\t\tProcessing physio files for "
-            + f"sub-{self._subid}, {sess} {run}"
+            + f"sub-{self._subid}, {sess} {run} {task}"
         )
         subj_phys = os.path.join(
             self._raw_path, f"sub-{self._subid}/{sess}/phys"
@@ -612,6 +612,9 @@ class ConvertSourcedata:
                 + f"sub-{self._subid}. Skipping."
             )
             return
+
+        # Deal with update to resting state name
+        beh_list = [x for x in beh_list if "Rest" not in x]
         mk_beh = _ProcessBeh(self._subid, self._raw_path)
         for task_path in beh_list:
             mk_beh.make_events(task_path)
