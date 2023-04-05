@@ -31,5 +31,22 @@
                 "rest_01"
             ]
         }
+    },
+    "ER0641": {
+        "ses-day2": {
+            "fmap1": [
+                "movies_01",
+                "movies_02",
+                "movies_03",
+                "movies_04",
+                "movies_05",
+                "movies_06",
+                "movies_07"
+            ],
+            "fmap2": [                
+                "movies_08",
+                "rest_01"
+            ]
+        }
     }
 }
