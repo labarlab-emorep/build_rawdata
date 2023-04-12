@@ -1,12 +1,11 @@
-r"""Convert DICOMs to NIfTI files.
+r"""Build BIDS rawdata for EmoRep experiment.
 
-Converts all DICOMs in a subject's session
-sourcedata DICOM directory into BIDS-formatted
-NIfTI files, output to rawdata.
+Referencing data collected at the scanner, build a BIDS-organized
+rawdata with NIfTIs, behavioral events, resting-state task response,
+and physiological data. Optional defacing is available for NDAR
+purposes and is written to derivatives.
 
-Notes
------
-Requires EmoRep_BIDS sourcedata organization.
+Requires in-house EmoRep sourcedata organization.
 
 Examples
 --------
@@ -24,7 +23,7 @@ import sys
 import glob
 import textwrap
 from argparse import ArgumentParser, RawTextHelpFormatter
-from build_rawdata import workflow
+from build_rawdata import workflows
 from build_rawdata.resources import bidsify
 import build_rawdata._version as ver
 
@@ -116,9 +115,7 @@ def main():
         )
 
     # Start workflow for each subject
-    wf = workflow.ConvertSourcedata(
-        source_path, raw_path, deriv_dir, do_deface
-    )
+    wf = workflows.BuildEmoRep(source_path, raw_path, deriv_dir, do_deface)
     for subid in sub_list:
         print(f"\nWorking on {subid}")
         chk_pass = wf.chk_sourcedata(subid)

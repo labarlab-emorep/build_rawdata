@@ -8,7 +8,9 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "build_rawdata=build_rawdata.cli:main",
+            "build_rawdata=build_rawdata.entrypoint:main",
+            "build_emorep=build_rawdata.cli.run_emorep:main",
+            "build_nki=build_rawdata.cli.run_nki:main",
         ]
     },
     scripts=["build_rawdata/bin/org_dcms.sh"],

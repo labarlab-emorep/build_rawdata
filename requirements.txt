@@ -1,8 +1,8 @@
-bioread==3.0.0
-neurokit2==0.2.1
+bioread==3.0.1
+neurokit2==0.2.4
 nibabel==4.0.1
-numpy==1.23.1
+numpy==1.17.4
 pandas==1.4.3
 pydeface==2.0.2
-pytest==7.1.2
-setuptools==65.5.1
+pytest==4.6.9
+setuptools==45.2.0
