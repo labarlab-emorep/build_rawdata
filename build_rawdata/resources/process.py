@@ -14,7 +14,7 @@ import os
 import glob
 import subprocess
 import textwrap
-import pydeface  # left here for generatings requirements files
+import pydeface  # noqa: F401
 
 
 def error_msg(msg: str, stdout: str, stderr: str):

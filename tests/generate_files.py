@@ -3,14 +3,14 @@ import subprocess
 
 
 def setup():
-    """Setup for dcm_conversion unit testing.
+    """Setup for build_rawdata unit testing.
 
-    Assumes dcm_conversion has already (successfully)
+    Assumes build_rawdata has already (successfully)
     converted data for ER0009.
     """
     test_par = (
         "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
-        + "/code/unit_test/dcm_conversion"
+        + "/code/unit_test/build_rawdata"
     )
     print(f"Setting up directory for testing:\n\t{test_par}\n")
 

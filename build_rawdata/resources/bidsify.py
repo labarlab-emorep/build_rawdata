@@ -4,7 +4,7 @@ import glob
 import shutil
 import json
 from typing import Union
-from dcm_conversion.resources import unique_cases
+from build_rawdata.resources import unique_cases
 
 
 class BidsifyNii:
@@ -190,11 +190,11 @@ class BidsifyNii:
                 f"{base_str}_task-rest_run-{run}_bold",
             ),
             "DICOM_Field_Map_P_A": ("fmap", f"{base_str}_acq-rpe_dir-PA_epi"),
-            f"DICOM_Field_Map_P_A_run1": (
+            "DICOM_Field_Map_P_A_run1": (
                 "fmap",
                 f"{base_str}_acq-rpe_dir-PA_run-{run}_epi",
             ),
-            f"DICOM_Field_Map_P_A_run_2": (
+            "DICOM_Field_Map_P_A_run_2": (
                 "fmap",
                 f"{base_str}_acq-rpe_dir-PA_run-{run}_epi",
             ),

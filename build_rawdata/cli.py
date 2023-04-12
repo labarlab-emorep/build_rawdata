@@ -10,9 +10,9 @@ Requires EmoRep_BIDS sourcedata organization.
 
 Examples
 --------
-dcm_conversion --sub-all --deface
+build_rawdata --sub-all --deface
 
-dcm_conversion \
+build_rawdata \
     --sub-list ER0009 ER0016 \
     --raw-dir /path/to/project/bids/rawdata \
     --deface
@@ -24,9 +24,9 @@ import sys
 import glob
 import textwrap
 from argparse import ArgumentParser, RawTextHelpFormatter
-from dcm_conversion import workflow
-from dcm_conversion.resources import bidsify
-import dcm_conversion._version as ver
+from build_rawdata import workflow
+from build_rawdata.resources import bidsify
+import build_rawdata._version as ver
 
 
 # %%
@@ -48,7 +48,7 @@ def get_args():
     )
     parser.add_argument(
         "--proj-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS",
+        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS",  # noqa: E501
         help=textwrap.dedent(
             """\
             Path to BIDS organized parent directory, containing sourcedata

@@ -9,7 +9,7 @@ import json
 import pandas as pd
 import numpy as np
 from typing import Union
-from dcm_conversion.resources import unique_cases
+from build_rawdata.resources import unique_cases
 
 
 # %%

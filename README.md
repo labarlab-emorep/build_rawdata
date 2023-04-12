@@ -1,4 +1,4 @@
-# dcm_conversion
+# build_rawdata
 
 This in-house python package is written for the EmoRep project, intended to be executed via command line on the labarserv2 computer.
 
@@ -11,9 +11,9 @@ This in-house python package is written for the EmoRep project, intended to be e
 - Copy physio data to rawdata, and generate a txt version for Autonomate
 
 ## Usage
-- Install to local python environment `$ python setup.py install --record record.txt` 
+- Install to local python environment `$ python setup.py install --record record.txt`
     - (should already be done)
-- Trigger package help and usage via entrypoint `$ dcm_conversion`
+- Trigger package help and usage via entrypoint `$ build_rawdata`
 
 ## Documentation
 _TODO: take readthedocs live_

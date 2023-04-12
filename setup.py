@@ -1,17 +1,17 @@
 from setuptools import setup, find_packages
 
-exec(open("dcm_conversion/_version.py").read())
+exec(open("build_rawdata/_version.py").read())
 
 setup(
-    name="dcm_conversion",
+    name="build_rawdata",
     version=__version__,  # noqa: F821
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "dcm_conversion=dcm_conversion.cli:main",
+            "build_rawdata=build_rawdata.cli:main",
         ]
     },
-    scripts=["dcm_conversion/bin/org_dcms.sh"],
+    scripts=["build_rawdata/bin/org_dcms.sh"],
     include_package_data=True,
     package_data={"": ["reference_files/*.json"]},
     install_requires=[

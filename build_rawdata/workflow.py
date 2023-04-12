@@ -15,9 +15,9 @@ import subprocess as sp
 from typing import Union
 from fnmatch import fnmatch
 from datetime import datetime
-import bioread  # left here for generatings requirements files
+import bioread  # noqa: F401
 import neurokit2 as nk
-from dcm_conversion.resources import process, bidsify, behavior
+from build_rawdata.resources import process, bidsify, behavior
 
 
 # %%
@@ -105,7 +105,7 @@ class _ProcessMri:
         if not hasattr(self, "_subj_raw") or not hasattr(self, "_sess"):
             raise AttributeError(
                 "_ProcessMri.bidsify_niftis requires _ProcessMri.make_niftis"
-                + f" to be run first."
+                + " to be run first."
             )
 
         # Check for previous BIDS, run bidsify
@@ -293,7 +293,7 @@ class _ProcessRate:
         if chk_subid[4:] != self._subid:
             print(
                 f"\tERROR: Rating file for subject '{chk_subid}' found "
-                + f"in sourcedata/{subid}/{day}/Scanner_behav, skipping."
+                + f"in sourcedata/{self._subid}/{day}/Scanner_behav, skipping."
             )
             return False
 
@@ -390,7 +390,8 @@ class _ProcessPhys:
         if chk_subid != self._subid:
             print(
                 f"\tERROR: Physio file for subject '{chk_subid}' found "
-                + f"in sourcedata/{subid}/{day}/Scanner_physio, skipping."
+                + f"in sourcedata/{self._subid}/{day}/Scanner_physio, "
+                + "skipping."
             )
             return False
 
@@ -458,8 +459,7 @@ class _ProcessPhys:
             )
             shutil.copy(phys_path, dest_orig)
             os.rename(dest_orig, dest_acq)
-        except:
-            # nk throws the stupid struct.error, hence the naked catch.
+        except:  # noqa: E722, nk throws the stupid struct.error
             "\t\t\tInsufficient data, continuing ..."
             return
 

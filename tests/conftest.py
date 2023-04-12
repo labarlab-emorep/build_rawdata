@@ -2,7 +2,7 @@ import pytest
 import os
 import glob
 import shutil
-from dcm_conversion.resources import process, bidsify, behavior
+from build_rawdata.resources import process, bidsify, behavior
 import generate_files
 
 
@@ -17,7 +17,7 @@ def fixt_setup():
     )
     test_par = (
         "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
-        + "/code/unit_test/dcm_conversion"
+        + "/code/unit_test/build_rawdata"
     )
 
     # Setup reference variables

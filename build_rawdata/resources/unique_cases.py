@@ -7,7 +7,7 @@ need to be treated specially by the package.
 """
 import json
 import importlib.resources as pkg_resources
-from dcm_conversion import reference_files
+from build_rawdata import reference_files
 
 
 def wash_issue(trial_types, task, sess, subid):
