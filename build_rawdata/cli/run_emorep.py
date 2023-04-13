@@ -9,9 +9,9 @@ Requires in-house EmoRep sourcedata organization.
 
 Examples
 --------
-build_rawdata --sub-all --deface
+build_emorep --sub-all --deface
 
-build_rawdata \
+build_emorep \
     --sub-list ER0009 ER0016 \
     --raw-dir /path/to/project/bids/rawdata \
     --deface
