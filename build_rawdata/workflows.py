@@ -1,6 +1,7 @@
 """Coordinate modules into workflow.
 
-BuildEmoRep : Build rawdata for Exp2_Compute_EMotion
+BuildEmoRep : Build rawdata for Exp2_Compute_Emotion
+build_nki   : Get NKI Rockland Archival data for Exp3_Classify_Archival
 
 """
 # %%
@@ -231,13 +232,68 @@ def build_nki(
     nki_dir,
     proj_dir,
     prot,
-    pull_link,
-    pull_script,
     scan,
     sess,
 ):
-    """Title."""
+    """Pull data from the NKI Rockland Archive.
 
+    Setup a rawdata directory consisting of NKI Rockland Archival data,
+    then clean up directory by removing physio data. This method
+    is really just a wrapper for the download script available at:
+        http://fcon_1000.projects.nitrc.org/indi/enhanced/neurodata.html
+
+    Data will be organized in:
+        <proj_dir>/data_mri_BIDS/rawdata
+
+    Parameters
+    ----------
+    age : int
+        Age lower threshold
+    dryrun : bool
+        Test the download parameters
+    hand : str
+        Handedness of participants
+    nki_dir : str, os.PathLike
+        Location of directory containing NKI files:
+        -   aws_links.csv
+        -   download_rockland_raw_bids_ver2.py
+    proj_dir : str, os.PathLike
+        Parent directory of project
+    port : str
+        Scanning protocol
+    scan : list
+        Scan types to download
+    sess : str
+        Session, Visit name
+
+    Raises
+    ------
+    FileNotFoundError
+        Missing required files
+    ValueError
+        Unexpected values for parameters
+
+    """
+    # Validate user input
+    if hand:
+        if hand not in ["L", "R"]:
+            raise ValueError("Unexepected parameter for --hand")
+    if sess not in ["BAS1", "BAS2", "BAS3"]:
+        raise ValueError("Unexepected parameter for --session")
+    if prot not in ["REST645", "REST1400", "RESTCAP", "RESTPCASL"]:
+        raise ValueError("Unexepected parameter for --protocol")
+    for _chk in scan:
+        if _chk not in ["anat", "func", "dwi"]:
+            raise ValueError("Unexepected parameter for --scan-type")
+
+    # Check for required files
+    pull_script = os.path.join(nki_dir, "download_rockland_raw_bids_ver2.py")
+    pull_link = os.path.join(nki_dir, "aws_links.csv")
+    for _chk in [pull_script, pull_link]:
+        if not os.path.exists(_chk):
+            raise FileNotFoundError(f"Expected file : {_chk}")
+
+    # Setup
     raw_path = os.path.join(proj_dir, "data_mri_BIDS", "rawdata")
     if not os.path.exists(raw_path):
         os.makedirs(raw_path)
@@ -246,7 +302,7 @@ def build_nki(
     pull_list = [
         "python",
         pull_script,
-        f"--aws_links {pull_link}",
+        f"-al {pull_link}",
         f"-o {raw_path}",
         f"-v {sess}",
         f"-e {prot}",

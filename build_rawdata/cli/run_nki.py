@@ -1,11 +1,21 @@
-"""Title.
+"""Download NKI Rockland Archival Data.
 
-Desc: TODO
+Download anatomical and resting-state EPI data from the
+NKI Rockland Archive and setup a BIDS-organized rawdata
+directory.
+
+Essentially a project-specific wrapper for methods detailed at:
+    http://fcon_1000.projects.nitrc.org/indi/enhanced/neurodata.html
+
+The EmoRep project employed the method used in the first example,
+and additional options are supplied for 'future-proofing'.
 
 Examples
 --------
 build_nki -t anat func
 build_nki -t anat func --hand R --dryrun
+build_nki -t anat func --age 80 --dryrun
+build_nki -t anat func --protocol REST645 --session BAS3 --dryrun
 
 """
 # %%
@@ -133,25 +143,11 @@ def main():
     sess = args.session
 
     # Find, check for required paths/files
-    pull_script = os.path.join(nki_dir, "download_rockland_raw_bids_ver2.py")
-    pull_link = os.path.join(nki_dir, "aws_links.csv")
-    for _chk in [proj_dir, nki_dir, pull_script, pull_link]:
+    for _chk in [proj_dir, nki_dir]:
         if not os.path.exists(_chk):
             raise FileNotFoundError(
                 f"Missing expected directory or file : {_chk}"
             )
-
-    # Validate user input
-    if hand:
-        if hand not in ["L", "R"]:
-            raise ValueError("Unexepected parameter for --hand")
-    if sess not in ["BAS1", "BAS2", "BAS3"]:
-        raise ValueError("Unexepected parameter for --session")
-    if prot not in ["REST645", "REST1400", "RESTCAP", "RESTPCASL"]:
-        raise ValueError("Unexepected parameter for --protocol")
-    for _chk in scan:
-        if _chk not in ["anat", "func", "dwi"]:
-            raise ValueError("Unexepected parameter for --scan-type")
 
     workflows.build_nki(
         age,
@@ -160,8 +156,6 @@ def main():
         nki_dir,
         proj_dir,
         prot,
-        pull_link,
-        pull_script,
         scan,
         sess,
     )
