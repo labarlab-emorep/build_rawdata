@@ -8,7 +8,9 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "build_rawdata=build_rawdata.cli:main",
+            "build_rawdata=build_rawdata.entrypoint:main",
+            "build_emorep=build_rawdata.cli.run_emorep:main",
+            "build_nki=build_rawdata.cli.run_nki:main",
         ]
     },
     scripts=["build_rawdata/bin/org_dcms.sh"],
@@ -16,6 +18,7 @@ setup(
     package_data={"": ["reference_files/*.json"]},
     install_requires=[
         "bioread>=3.0.0",
+        "boto3>=1.26.112",
         "neurokit2>=0.2.1",
         "nibabel>=4.0.1",
         "numpy>=1.23.1",
