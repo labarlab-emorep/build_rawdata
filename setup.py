@@ -18,6 +18,7 @@ setup(
     package_data={"": ["reference_files/*.json"]},
     install_requires=[
         "bioread>=3.0.0",
+        "boto3>=1.26.112",
         "neurokit2>=0.2.1",
         "nibabel>=4.0.1",
         "numpy>=1.23.1",

@@ -6,6 +6,8 @@ BuildEmoRep : Build rawdata for Exp2_Compute_EMotion
 # %%
 import os
 import glob
+import subprocess
+import boto3  # noqa: F401
 from fnmatch import fnmatch
 from build_rawdata.resources import emorep
 
@@ -219,3 +221,53 @@ class BuildEmoRep:
         )
         for phys_path in phys_list:
             mk_phys.make_physio(phys_path)
+
+
+# %%
+def build_nki(
+    age,
+    dryrun,
+    hand,
+    nki_dir,
+    proj_dir,
+    prot,
+    pull_link,
+    pull_script,
+    scan,
+    sess,
+):
+    """Title."""
+
+    raw_path = os.path.join(proj_dir, "data_mri_BIDS", "rawdata")
+    if not os.path.exists(raw_path):
+        os.makedirs(raw_path)
+
+    # Build pull command, execute
+    pull_list = [
+        "python",
+        pull_script,
+        f"--aws_links {pull_link}",
+        f"-o {raw_path}",
+        f"-v {sess}",
+        f"-e {prot}",
+        f"-t {' '.join(scan)}",
+        f"-gt {age}",
+    ]
+    if dryrun:
+        pull_list.append("-n")
+    if hand:
+        pull_list.append(f"-m {hand}")
+
+    pull_cmd = " ".join(pull_list)
+    print(f"Running pull command :\n\t{pull_cmd}\n")
+    subprocess.run(pull_cmd, shell=True)
+
+    # Remove physio
+    if dryrun:
+        return
+    print("Removing physio files ...")
+    phys_all = glob.glob(f"{raw_path}/**/*_physio.*", recursive=True)
+    if not phys_all:
+        return
+    for phys_path in phys_all:
+        os.remove(phys_path)
