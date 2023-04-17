@@ -318,6 +318,23 @@ def build_nki(
     print(f"Running pull command :\n\t{pull_cmd}\n")
     subprocess.run(pull_cmd, shell=True)
 
+    # Add run field to func for consistency with Exp2
+    rest_all = [
+        x
+        for x in glob.glob(
+            f"{raw_path}/**/ses-BAS1/func/*task-rest*", recursive=True
+        )
+        if "run-01" not in x
+    ]
+    for rest_path in rest_all:
+        out_name = os.path.basename(rest_path).replace(
+            "task-rest", "task-rest_run-01"
+        )
+        out_path = os.path.join(os.path.dirname(rest_path), out_name)
+        if os.path.exists(out_path):
+            continue
+        os.replace(rest_path, out_path)
+
     # Remove physio
     if dryrun:
         return
@@ -327,3 +344,6 @@ def build_nki(
         return
     for phys_path in phys_all:
         os.remove(phys_path)
+
+
+# %%
