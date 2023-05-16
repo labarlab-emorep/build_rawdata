@@ -237,11 +237,12 @@ def build_nki(
 ):
     """Pull data from the NKI Rockland Archive.
 
-    Setup a rawdata directory consisting of NKI Rockland Archival data,
-    then clean up directory by removing physio data. This method
-    is really just a wrapper for the download script available at:
+    This method is really just a wrapper for the download script available at:
         http://fcon_1000.projects.nitrc.org/indi/enhanced/neurodata.html
 
+    Setup a rawdata directory consisting of NKI Rockland Archival data,
+    then clean up directory by removing physio data, adding BIDS run field,
+    and shortening the subject ID (to resolve FSL buffer overlow issue).
     Data will be organized in:
         <proj_dir>/data_mri_BIDS/rawdata
 
@@ -286,14 +287,12 @@ def build_nki(
         if _chk not in ["anat", "func", "dwi"]:
             raise ValueError("Unexepected parameter for --scan-type")
 
-    # Check for required files
+    # Check for required files, setup
     pull_script = os.path.join(nki_dir, "download_rockland_raw_bids_ver2.py")
     pull_link = os.path.join(nki_dir, "aws_links.csv")
     for _chk in [pull_script, pull_link]:
         if not os.path.exists(_chk):
             raise FileNotFoundError(f"Expected file : {_chk}")
-
-    # Setup
     raw_path = os.path.join(proj_dir, "data_mri_BIDS", "rawdata")
     if not os.path.exists(raw_path):
         os.makedirs(raw_path)
@@ -340,10 +339,26 @@ def build_nki(
         return
     print("Removing physio files ...")
     phys_all = glob.glob(f"{raw_path}/**/*_physio.*", recursive=True)
-    if not phys_all:
-        return
-    for phys_path in phys_all:
-        os.remove(phys_path)
+    if phys_all:
+        for phys_path in phys_all:
+            os.remove(phys_path)
+
+    # Shorten IDs
+    subj_all = [
+        os.path.basename(x) for x in sorted(glob.glob(f"{raw_path}/sub-*"))
+    ]
+    subj_switch = {x: f"sub-{x[-5:]}" for x in subj_all}
+    for _long, _short in subj_switch.items():
+
+        # Rename parent dir
+        short_dir = os.path.join(raw_path, _short)
+        os.rename(os.path.join(raw_path, _long), short_dir)
+
+        # Rename files
+        file_list = glob.glob(f"{short_dir}/**/{_long}_*", recursive=True)
+        for _file in file_list:
+            file_path, suff = _file.split(_long)
+            os.rename(_file, f"{file_path}{_short}{suff}")
 
 
 # %%
