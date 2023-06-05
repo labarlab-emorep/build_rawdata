@@ -325,7 +325,7 @@ def _events_json(task: str, event_tsv: Union[str, os.PathLike]):
         ] = "Vignette of emotional event"
 
     # Write event json file
-    event_json = event_tsv.replace(".json", ".tsv")
+    event_json = event_tsv.replace(".tsv", ".json")
     with open(event_json, "w") as jf:
         json.dump(event_dict, jf)
 
