@@ -110,7 +110,6 @@ def fmap_issue(sess, subid, bold_list):
     map_bold_fmap = []
     sess_dict = subs_to_tend[subid][sess]
     for fmap_key, map_list in sess_dict.items():
-
         # Validate user-specified unique_fmaps.json setup
         if fmap_key not in ["fmap1", "fmap2"]:
             raise KeyError(
@@ -147,3 +146,8 @@ def fmap_issue(sess, subid, bold_list):
                 )
         map_bold_fmap.append(match_list)
     return map_bold_fmap
+
+
+def deface_issue():
+    """title"""
+    pass
