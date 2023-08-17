@@ -5,7 +5,9 @@ or a protocol will change, resulting in special cases that
 need to be treated specially by the package.
 
 """
+import os
 import json
+import subprocess
 import importlib.resources as pkg_resources
 from build_rawdata import reference_files
 
@@ -148,6 +150,31 @@ def fmap_issue(sess, subid, bold_list):
     return map_bold_fmap
 
 
-def deface_issue():
-    """title"""
-    pass
+def deface_issue(t1_path, deriv_dir, subid, sess):
+    """Reorienting the sample due to an error in defacing."""
+    # Get improper defaces and check for subject and session
+    with pkg_resources.open_text(reference_files, "unique_deface.json") as jf:
+        subs_to_reorient = json.load(jf)
+    if subid not in subs_to_reorient.keys():
+        return (t1_path, False)
+
+    # copy file into reorient_deriv directory (built in process.deface)
+    subj_reorient_deriv = os.path.join(
+        deriv_dir, "reorient", f"sub-{subid}", sess
+    )
+    if not os.path.exists(subj_reorient_deriv):
+        os.makedirs(subj_reorient_deriv)
+
+    bash_reorient_cmd = f"""\
+        3dresample \
+        -orient LPI \
+        -rmode NN \
+        -prefix {subj_reorient_deriv}/reorient.nii.gz \
+        -input {t1_path}
+    """
+    h_sp = subprocess.Popen(
+        bash_reorient_cmd, shell=True, stdout=subprocess.PIPE
+    )
+    job_out, job_err = h_sp.communicate()
+    h_sp.wait()
+    return (os.path.join(subj_reorient_deriv, "reorient.nii.gz"), True)

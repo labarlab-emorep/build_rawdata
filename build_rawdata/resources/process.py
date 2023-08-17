@@ -11,10 +11,12 @@ Assumes T1w exist for each session.
 
 """
 import os
+import shutil
 import glob
 import subprocess
 import textwrap
 import pydeface  # noqa: F401
+from build_rawdata.resources import unique_cases
 
 
 def error_msg(msg: str, stdout: str, stderr: str):
@@ -145,9 +147,14 @@ def deface(t1_list, deriv_dir, subid, sess):
         if os.path.exists(t1_deface):
             continue
 
+        deface_input, clean_reorient = unique_cases.deface_issue(
+            t1_path, deriv_dir, subid, sess
+        )
+        # deface_issue will return a path
+
         # Write, submit defacing
         bash_cmd = f"""\
-            pydeface {t1_path} --outfile {t1_deface}
+            pydeface {deface_input} --outfile {t1_deface}
         """
         h_sp = subprocess.Popen(bash_cmd, shell=True, stdout=subprocess.PIPE)
         _, _ = h_sp.communicate()
@@ -157,5 +164,9 @@ def deface(t1_list, deriv_dir, subid, sess):
         if not os.path.exists(t1_deface):
             raise FileNotFoundError(f"Defacing failed for {t1_path}.")
         deface_list.append(t1_deface)
+
+        # cleaning up
+        if clean_reorient:
+            shutil.rmtree(os.path.dirname(deface_input))
 
     return deface_list
