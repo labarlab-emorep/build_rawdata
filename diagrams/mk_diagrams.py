@@ -2,7 +2,8 @@
 from diagrams import Cluster, Diagram, Edge
 
 # %%
-from diagrams.aws.compute import Compute, EC2Instance
+from diagrams.aws.analytics import DataPipeline
+from diagrams.aws.compute import Compute
 from diagrams.aws.database import Database
 from diagrams.aws.devtools import CommandLineInterface
 from diagrams.aws.general import General
@@ -47,41 +48,78 @@ graph_attr = {
     "compound": "true",
     }
 
-with Diagram("process", graph_attr=graph_attr):
+with Diagram("process", graph_attr=graph_attr, show=False):
     with Cluster("cli"):
         cli_nki = CommandLineInterface("run_nki")
         cli_emo = CommandLineInterface("run_emorep")
 
     with Cluster("workflows"):
         wf_nki = Compute("build_nki")
-        wf_emo = General("BuildEmoRep")
+        with Cluster("BuildEmoRep"):
+            conv_mri = DataPipeline("convert_mri")
+            conv_beh = DataPipeline("convert_beh")
+            conv_rate = DataPipeline("convert_rate")
+            conv_phys = DataPipeline("convert_phys")
 
     with Cluster("nki_proc"):
         nk_py = Database("NKI pull")
         nk_clean = Compute("clean")
 
-    with Cluster("BuildEmoRep"):
-        conv_mri = Compute("convert_mri")
-        conv_beh = Compute("convert_beh")
-        conv_rate = Compute("convert_rate")
-        conv_phys = Compute("convert_phys")
+    with Cluster("emorep.ProcessMri"):
+        with Cluster("make_niftis"):
+            with Cluster("process"):
+                make_nii = Compute("dcm2niix")
+        with Cluster("bidsify_niftis"):
+            with Cluster("bidsify.BidsifyNii"):
+                bids_nii = Compute("bids_nii")
+                up_func = Compute("update_func")
+                up_fmap = Compute("update_fmap")
+        with Cluster("deface_anat"):
+            with Cluster("process"):
+                deface_nii = Compute("deface")
 
-        with Cluster("emorep.ProcessMri"):
-            make_nii = Compute("make_niftis")
-            with Cluster("bidsify_niftis"):
-                bids_nii = Compute("BIDS NIfTIs")
-                up_func = Compute("Update func")
-                up_fmap = Compute("Update fmap")
-            deface_nii = Compute("deface")
+    with Cluster("emorep.ProcessBeh"):
+        with Cluster("make_events"):
+            with Cluster("behavior"):
+                ev_tsv = Compute("events_tsv")
+                ev_json = Compute("events_json")
 
+    with Cluster("emorep.ProcessRate"):
+        with Cluster("make_rate"):
+            with Cluster("behavior"):
+                rest_tsv = Compute("rest_ratings")
+
+    with Cluster("emorep.ProcessPhys"):
+        with Cluster("make_physio"):
+            phys_txt = Compute("neurokit2")
+
+    with Cluster("unique_cases"):
+        fix_wash = Compute("wash_issue")
+        fix_fmap = Compute("fmap_issue")
+
+
+    # NKI workflow
     cli_nki >> wf_nki >> Edge(lhead='cluster_nki_proc') >> nk_py
     nk_py >> nk_clean
-    cli_emo >> wf_emo >> Edge(lhead='cluster_BuildEmoRep') >> conv_mri
-    conv_mri >> Edge(lhead='cluster_emorep.ProcessMri') >> make_nii
-    make_nii >> Edge(lhead='cluster_bidsify_niftis') >> bids_nii
-    bids_nii >> up_func >> up_fmap
-    up_fmap >> Edge(ltail='cluster_bidsify_niftis') >> deface_nii
 
+    # Start EmoRep
+    cli_emo >> Edge(lhead='cluster_BuildEmoRep') >> conv_mri
+
+    # MRI workflow
+    conv_mri >> Edge(lhead='cluster_emorep.ProcessMri') >> make_nii
+    make_nii >> Edge(
+        lhead='cluster_bidsify_niftis', ltail='cluster_make_niftis'
+        ) >> bids_nii
+    bids_nii >> up_func >> up_fmap
+    up_fmap >> Edge(ltail='cluster_bidsify_niftis', lhead='cluster_deface_anat') >> deface_nii
+    up_fmap << fix_fmap
+
+    # Behavior, rest ratings, and physio
+    conv_beh >> Edge(lhead='cluster_emorep.ProcessBeh') >> ev_tsv
+    ev_tsv >> ev_json
+    ev_tsv << fix_wash
+    conv_rate >> Edge(lhead='cluster_emorep.ProcessRate') >> rest_tsv
+    conv_phys >> Edge(lhead='cluster_emorep.ProcessPhys') >> phys_txt
 
 
 
