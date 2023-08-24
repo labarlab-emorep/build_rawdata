@@ -178,3 +178,33 @@ def deface_issue(t1_path, deriv_dir, subid, sess):
     job_out, job_err = h_sp.communicate()
     h_sp.wait()
     return (os.path.join(subj_reorient_deriv, "reorient.nii.gz"), True)
+
+
+def reface_workaround(t1_path, deriv_dir, subid, sess):
+    """Using Afni Reface instead of Pydeface."""
+    with pkg_resources.open_text(reference_files, "unique_deface.json") as jf:
+        subs_to_reorient = json.load(jf)
+    if subid not in subs_to_reorient.keys():
+        return (t1_path, False)
+
+    subj_reface_deriv = os.path.join(deriv_dir, "reface", f"sub-{subid}", sess)
+    if not os.path.exists(subj_reface_deriv):
+        os.makedirs(subj_reface_deriv)
+
+    out_file = os.path.join(subj_reface_deriv, "refaced.nii.gz")
+
+    bash_reface_cmd = f"""\
+        @afni_reface_run \
+        -input {t1_path}\
+        -mode_deface \
+        -prefix {out_file}
+    """
+    h_sp = subprocess.Popen(
+        bash_reface_cmd, shell=True, stdout=subprocess.PIPE
+    )
+    job_out, job_err = h_sp.communicate()
+    h_sp.wait()
+    # Check
+    if not os.path.exists(out_file):
+        raise FileNotFoundError("some message")
+    return (out_file, True)

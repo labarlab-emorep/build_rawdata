@@ -145,16 +145,27 @@ def deface(t1_list, deriv_dir, subid, sess):
 
         # Avoid repeating work
         if os.path.exists(t1_deface):
-            continue
+            # REMOVE THIS FOR MAIN BRANCH
+            os.remove(t1_deface)
+            # continue
 
-        deface_input, clean_reorient = unique_cases.deface_issue(
+        # deface_input, clean_reorient = unique_cases.deface_issue(
+        #     t1_path, deriv_dir, subid, sess
+        # )
+        # deface_issue will return a path
+
+        # reface work-around
+        reface_output, reface_done = unique_cases.reface_workaround(
             t1_path, deriv_dir, subid, sess
         )
-        # deface_issue will return a path
+
+        if reface_done:
+            deface_list.append(reface_output)
+            return deface_list
 
         # Write, submit defacing
         bash_cmd = f"""\
-            pydeface {deface_input} --outfile {t1_deface}
+            pydeface {t1_path} --outfile {t1_deface}
         """
         h_sp = subprocess.Popen(bash_cmd, shell=True, stdout=subprocess.PIPE)
         _, _ = h_sp.communicate()
@@ -166,7 +177,7 @@ def deface(t1_list, deriv_dir, subid, sess):
         deface_list.append(t1_deface)
 
         # cleaning up
-        if clean_reorient:
-            shutil.rmtree(os.path.dirname(deface_input))
+        # if clean_reorient:
+        #     shutil.rmtree(os.path.dirname(deface_input))
 
     return deface_list
