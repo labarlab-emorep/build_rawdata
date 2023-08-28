@@ -6,6 +6,7 @@ need to be treated specially by the package.
 
 """
 import os
+import shutil
 import json
 import subprocess
 import importlib.resources as pkg_resources
@@ -180,7 +181,7 @@ def deface_issue(t1_path, deriv_dir, subid, sess):
     return (os.path.join(subj_reorient_deriv, "reorient.nii.gz"), True)
 
 
-def reface_workaround(t1_path, deriv_dir, subid, sess):
+def reface_workaround(t1_path, deriv_dir, subid, sess, subj_deriv, t1_deface):
     """Using Afni Reface instead of Pydeface."""
     with pkg_resources.open_text(reference_files, "unique_deface.json") as jf:
         subs_to_reorient = json.load(jf)
@@ -191,20 +192,22 @@ def reface_workaround(t1_path, deriv_dir, subid, sess):
     if not os.path.exists(subj_reface_deriv):
         os.makedirs(subj_reface_deriv)
 
-    out_file = os.path.join(subj_reface_deriv, "refaced.nii.gz")
+    reface_output = os.path.join(subj_reface_deriv, "refaced.nii.gz")
 
     bash_reface_cmd = f"""\
-        @afni_reface_run \
-        -input {t1_path}\
+        @afni_refacer_run \
+        -input {t1_path} \
         -mode_deface \
-        -prefix {out_file}
+        -prefix {reface_output}
     """
     h_sp = subprocess.Popen(
         bash_reface_cmd, shell=True, stdout=subprocess.PIPE
     )
     job_out, job_err = h_sp.communicate()
     h_sp.wait()
+    # print(job_out, job_err)
     # Check
-    if not os.path.exists(out_file):
+    if not os.path.exists(subj_deriv):
         raise FileNotFoundError("some message")
-    return (out_file, True)
+
+    return (reface_output, True)

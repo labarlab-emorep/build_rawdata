@@ -11,6 +11,7 @@ Assumes T1w exist for each session.
 
 """
 import os
+
 import shutil
 import glob
 import subprocess
@@ -144,10 +145,10 @@ def deface(t1_list, deriv_dir, subid, sess):
         )
 
         # Avoid repeating work
-        if os.path.exists(t1_deface):
-            # REMOVE THIS FOR MAIN BRANCH
-            os.remove(t1_deface)
-            # continue
+        # if os.path.exists(t1_deface):
+        #     # REMOVE THIS FOR MAIN BRANCH
+        #     os.remove(t1_deface)
+        # continue
 
         # deface_input, clean_reorient = unique_cases.deface_issue(
         #     t1_path, deriv_dir, subid, sess
@@ -156,10 +157,11 @@ def deface(t1_list, deriv_dir, subid, sess):
 
         # reface work-around
         reface_output, reface_done = unique_cases.reface_workaround(
-            t1_path, deriv_dir, subid, sess
+            t1_path, deriv_dir, subid, sess, subj_deriv, t1_deface
         )
 
         if reface_done:
+            shutil.copy(reface_output, t1_deface)
             deface_list.append(reface_output)
             return deface_list
 
