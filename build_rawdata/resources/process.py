@@ -161,7 +161,6 @@ def deface(t1_list, deriv_dir, subid, sess):
         )
 
         if reface_done:
-            shutil.copy(reface_output, t1_deface)
             deface_list.append(reface_output)
             return deface_list
 
@@ -177,9 +176,5 @@ def deface(t1_list, deriv_dir, subid, sess):
         if not os.path.exists(t1_deface):
             raise FileNotFoundError(f"Defacing failed for {t1_path}.")
         deface_list.append(t1_deface)
-
-        # cleaning up
-        # if clean_reorient:
-        #     shutil.rmtree(os.path.dirname(deface_input))
 
     return deface_list

@@ -207,7 +207,11 @@ def reface_workaround(t1_path, deriv_dir, subid, sess, subj_deriv, t1_deface):
     h_sp.wait()
     # print(job_out, job_err)
     # Check
-    if not os.path.exists(subj_deriv):
-        raise FileNotFoundError("some message")
+    if not os.path.exists(reface_output):
+        raise FileNotFoundError(f"Afni_refacer_run failed for {subid} {sess}.")
 
-    return (reface_output, True)
+    shutil.copy(reface_output, t1_deface)
+    # cleaning up
+    shutil.rmtree(subj_reface_deriv)
+
+    return (t1_deface, True)
