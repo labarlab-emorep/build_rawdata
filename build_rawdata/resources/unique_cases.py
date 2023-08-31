@@ -5,10 +5,7 @@ or a protocol will change, resulting in special cases that
 need to be treated specially by the package.
 
 """
-import os
-import shutil
 import json
-import subprocess
 import importlib.resources as pkg_resources
 from build_rawdata import reference_files
 
@@ -149,69 +146,3 @@ def fmap_issue(sess, subid, bold_list):
                 )
         map_bold_fmap.append(match_list)
     return map_bold_fmap
-
-
-def deface_issue(t1_path, deriv_dir, subid, sess):
-    """Reorienting the sample due to an error in defacing."""
-    # Get improper defaces and check for subject and session
-    with pkg_resources.open_text(reference_files, "unique_deface.json") as jf:
-        subs_to_reorient = json.load(jf)
-    if subid not in subs_to_reorient.keys():
-        return (t1_path, False)
-
-    # copy file into reorient_deriv directory (built in process.deface)
-    subj_reorient_deriv = os.path.join(
-        deriv_dir, "reorient", f"sub-{subid}", sess
-    )
-    if not os.path.exists(subj_reorient_deriv):
-        os.makedirs(subj_reorient_deriv)
-
-    bash_reorient_cmd = f"""\
-        3dresample \
-        -orient LPI \
-        -rmode NN \
-        -prefix {subj_reorient_deriv}/reorient.nii.gz \
-        -input {t1_path}
-    """
-    h_sp = subprocess.Popen(
-        bash_reorient_cmd, shell=True, stdout=subprocess.PIPE
-    )
-    job_out, job_err = h_sp.communicate()
-    h_sp.wait()
-    return (os.path.join(subj_reorient_deriv, "reorient.nii.gz"), True)
-
-
-def reface_workaround(t1_path, deriv_dir, subid, sess, subj_deriv, t1_deface):
-    """Using Afni Reface instead of Pydeface."""
-    with pkg_resources.open_text(reference_files, "unique_deface.json") as jf:
-        subs_to_reorient = json.load(jf)
-    if subid not in subs_to_reorient.keys():
-        return (t1_path, False)
-
-    subj_reface_deriv = os.path.join(deriv_dir, "reface", f"sub-{subid}", sess)
-    if not os.path.exists(subj_reface_deriv):
-        os.makedirs(subj_reface_deriv)
-
-    reface_output = os.path.join(subj_reface_deriv, "refaced.nii.gz")
-
-    bash_reface_cmd = f"""\
-        @afni_refacer_run \
-        -input {t1_path} \
-        -mode_deface \
-        -prefix {reface_output}
-    """
-    h_sp = subprocess.Popen(
-        bash_reface_cmd, shell=True, stdout=subprocess.PIPE
-    )
-    job_out, job_err = h_sp.communicate()
-    h_sp.wait()
-    # print(job_out, job_err)
-    # Check
-    if not os.path.exists(reface_output):
-        raise FileNotFoundError(f"Afni_refacer_run failed for {subid} {sess}.")
-
-    shutil.copy(reface_output, t1_deface)
-    # cleaning up
-    shutil.rmtree(subj_reface_deriv)
-
-    return (t1_deface, True)

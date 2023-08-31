@@ -17,7 +17,8 @@ import glob
 import subprocess
 import textwrap
 import pydeface  # noqa: F401
-from build_rawdata.resources import unique_cases
+
+# from build_rawdata.resources import unique_cases
 
 
 def error_msg(msg: str, stdout: str, stderr: str):
@@ -145,36 +146,41 @@ def deface(t1_list, deriv_dir, subid, sess):
         )
 
         # Avoid repeating work
-        # if os.path.exists(t1_deface):
-        #     # REMOVE THIS FOR MAIN BRANCH
-        #     os.remove(t1_deface)
-        # continue
+        if os.path.exists(t1_deface):
+            continue
 
-        # deface_input, clean_reorient = unique_cases.deface_issue(
-        #     t1_path, deriv_dir, subid, sess
-        # )
-        # deface_issue will return a path
-
-        # reface work-around
-        reface_output, reface_done = unique_cases.reface_workaround(
-            t1_path, deriv_dir, subid, sess, subj_deriv, t1_deface
+        # create intermediary directory
+        subj_reface_deriv = os.path.join(
+            deriv_dir, "reface", f"sub-{subid}", sess
         )
+        if not os.path.exists(subj_reface_deriv):
+            os.makedirs(subj_reface_deriv)
 
-        if reface_done:
-            deface_list.append(reface_output)
-            return deface_list
+        reface_output = os.path.join(subj_reface_deriv, "refaced.nii.gz")
 
-        # Write, submit defacing
-        bash_cmd = f"""\
-            pydeface {t1_path} --outfile {t1_deface}
+        # Run afni refacer to deface t1w
+        bash_reface_cmd = f"""\
+            @afni_refacer_run \
+            -input {t1_path} \
+            -mode_deface \
+            -prefix {reface_output}
         """
-        h_sp = subprocess.Popen(bash_cmd, shell=True, stdout=subprocess.PIPE)
-        _, _ = h_sp.communicate()
+        h_sp = subprocess.Popen(
+            bash_reface_cmd, shell=True, stdout=subprocess.PIPE
+        )
+        job_out, job_err = h_sp.communicate()
         h_sp.wait()
 
-        # Check for output
-        if not os.path.exists(t1_deface):
-            raise FileNotFoundError(f"Defacing failed for {t1_path}.")
-        deface_list.append(t1_deface)
+        # Check
+        if not os.path.exists(reface_output):
+            raise FileNotFoundError(
+                f"Afni_refacer_run failed for {subid} {sess}."
+            )
+
+        shutil.copy(reface_output, t1_deface)
+
+        # cleaning up
+        shutil.rmtree(subj_reface_deriv)
+        deface_list.append(reface_output)
 
     return deface_list
