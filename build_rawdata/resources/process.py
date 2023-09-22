@@ -2,7 +2,7 @@
 
 Use Chris Rorden's dcm2niix to convert DICOMs to NIfTI files. Also rename
 files and restructure directory organizaton for BIDS compliance. Finally,
-deface via pydeface.
+deface via AFNI's refacer.
 
 Notes
 -----
@@ -11,14 +11,11 @@ Assumes T1w exist for each session.
 
 """
 import os
-
 import shutil
 import glob
 import subprocess
 import textwrap
 import pydeface  # noqa: F401
-
-# from build_rawdata.resources import unique_cases
 
 
 def error_msg(msg: str, stdout: str, stderr: str):
@@ -100,9 +97,7 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
 
 
 def deface(t1_list, deriv_dir, subid, sess):
-    """Deface T1w files.
-
-    Submits a bash subprocess that calls Poldrack's pydeface.
+    """Deface T1w files via AFNI's refacer.
 
     Parameters
     ----------
