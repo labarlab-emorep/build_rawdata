@@ -13,7 +13,7 @@ build_emorep --sub-all --deface
 
 build_emorep \
     --sub-list ER0009 ER0016 \
-    --raw-dir /path/to/project/bids/rawdata \
+    --proj-dir /path/to/project/bids \
     --deface
 
 """
