@@ -51,6 +51,12 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
     sess : str
         BIDS-formatted session string
 
+    Returns
+    -------
+    tuple
+        [0] = list of paths to niis
+        [1] = list of paths to jsons
+
     Notes
     -----
     Writes dcm2niix-named NIfTI files to subject's rawdata.
@@ -94,6 +100,7 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
         raise FileNotFoundError("No NIfTI files detected.")
     elif len(nii_list) != len(json_list):
         raise FileNotFoundError("Unbalanced number of NIfTI and JSON files.")
+    return (nii_list, json_list)
 
 
 def deface(t1_list, deriv_dir, subid, sess):

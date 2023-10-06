@@ -42,7 +42,14 @@ class BidsifyNii:
         self._task = task
 
     def bids_nii(self):
-        """BIDS-organize NIfTI and JSON files."""
+        """BIDS-organize NIfTI and JSON files.
+
+        Returns
+        -------
+        list
+            paths to nii anat files
+
+        """
         # Find files for organizing
         nii_list = sorted(glob.glob(f"{self._subj_raw}/*.nii.gz"))
         json_list = sorted(glob.glob(f"{self._subj_raw}/*.json"))
@@ -88,6 +95,7 @@ class BidsifyNii:
         t1_list = sorted(glob.glob(f"{self._subj_raw}/anat/*T1w.nii.gz"))
         if not t1_list:
             raise FileNotFoundError("No BIDS-organized T1w files detected.")
+        return t1_list
 
     def update_func(self):
         """Updated TaskName field of func JSON sidecars."""

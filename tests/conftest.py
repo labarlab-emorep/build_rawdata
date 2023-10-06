@@ -2,7 +2,9 @@ import pytest
 import os
 import glob
 import shutil
-from build_rawdata.resources import process, bidsify, behavior
+from build_rawdata.resources import behavior
+from build_rawdata.resources import bidsify
+from build_rawdata.resources import process
 import generate_files
 
 
@@ -12,6 +14,7 @@ def fixt_setup():
     subid = "ER0009"
     sess = "ses-day2"
     task = "task-movies"
+    run = "run-01"
     proj_dir = (
         "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS"
     )
@@ -31,27 +34,26 @@ def fixt_setup():
         ref_deriv,
         "deface",
         subj,
-        sess,
-        "sub-ER0009_ses-day2_T1w_defaced.nii.gz",
+        f"{subj}_{sess}_T1w_defaced.nii.gz",
     )
     ref_beh_tsv = os.path.join(
         ref_raw,
         subj,
         sess,
-        "func/sub-ER0009_ses-day2_task-movies_run-01_events.tsv",
+        f"func/{subj}_{sess}_{task}_{run}_events.tsv",
     )
     ref_beh_json = os.path.join(
         ref_raw,
         subj,
         sess,
-        "func/sub-ER0009_ses-day2_task-movies_run-01_events.json",
+        f"func/{subj}_{sess}_{task}_{run}_events.json",
     )
 
     # Check for setup
     missing_raw = False if os.path.exists(ref_t1w) else True
     missing_deface = False if os.path.exists(ref_deface) else True
     if missing_raw or missing_deface:
-        generate_files.setup()
+        generate_files.setup(subid, sess, task, run, proj_dir, test_par)
 
     # Setup test variables
     test_dir = os.path.join(test_par, "test_out")
@@ -60,6 +62,7 @@ def fixt_setup():
 
     yield {
         "subid": subid,
+        "subj": subj,
         "sess": sess,
         "task": task,
         "proj_dir": proj_dir,
@@ -71,6 +74,9 @@ def fixt_setup():
         "test_subj": test_subj,
         "test_subj_sess": test_subj_sess,
     }
+
+    # TODO remove return once tests are working
+    return
     if os.path.exists(test_dir):
         shutil.rmtree(test_dir)
 
@@ -95,14 +101,11 @@ def fixt_dcm_bids(fixt_setup):
         fixt_setup["subid"],
         fixt_setup["sess"],
     )
-    t1_list = bidsify.bidsify_nii(
-        nii_list,
-        json_list,
-        out_dir,
-        fixt_setup["subid"],
-        fixt_setup["sess"],
-        fixt_setup["task"],
+
+    bn = bidsify.BidsifyNii(
+        out_dir, fixt_setup["subj"], fixt_setup["sess"], fixt_setup["task"]
     )
+    t1_list = bn.bids_nii()
 
     # Yield dict and teardown
     yield {
@@ -110,6 +113,9 @@ def fixt_dcm_bids(fixt_setup):
         "json_list": json_list,
         "test_t1w": t1_list[0],
     }
+
+    # TODO remove return once tests are working
+    return
     shutil.rmtree(out_dir)
 
 
@@ -125,6 +131,9 @@ def fixt_deface(fixt_setup):
 
     # Yield and teardown
     yield {"test_deface": deface_list[0]}
+
+    # TODO remove return once tests are working
+    return
     shutil.rmtree(os.path.join(fixt_setup["test_dir"], "deface"))
 
 
@@ -144,6 +153,9 @@ def fixt_exp_bids(fixt_setup):
         "read_me": read_me,
         "ignore_file": ignore_file,
     }
+
+    # TODO remove return once tests are working
+    return
     for h_file in [data_desc, read_me, ignore_file]:
         if os.path.exists(h_file):
             os.remove(h_file)
@@ -179,6 +191,9 @@ def fixt_behavior(fixt_setup):
         "events_tsv": events_tsv,
         "events_json": events_json,
     }
+
+    # TODO remove return once tests are working
+    return
     for h_file in [events_json, events_tsv]:
         if os.path.exists(h_file):
             os.remove(h_file)
