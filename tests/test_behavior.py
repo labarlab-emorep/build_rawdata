@@ -24,3 +24,9 @@ def test_events_json(fixt_setup, fixt_behavior):
     with open(events_ref) as er:
         ref_dict = json.load(er)
     assert test_dict == ref_dict
+
+
+def test_rest_ratings(fixt_rest_ratings):
+    df_rest = fixt_rest_ratings["df_rest"]
+    df_ref = fixt_rest_ratings["df_ref"]
+    assert_frame_equal(df_rest, df_ref)

@@ -2,6 +2,8 @@ import pytest
 import os
 import glob
 import shutil
+import subprocess
+import pandas as pd
 from build_rawdata.resources import behavior
 from build_rawdata.resources import bidsify
 from build_rawdata.resources import process
@@ -30,22 +32,20 @@ def fixt_setup():
     ref_t1w = os.path.join(
         ref_raw, subj, sess, "anat/sub-ER0009_ses-day2_T1w.nii.gz"
     )
+    ref_raw_subj_sess = os.path.join(ref_raw, subj, sess)
     ref_deface = os.path.join(
         ref_deriv,
         "deface",
         subj,
+        sess,
         f"{subj}_{sess}_T1w_defaced.nii.gz",
     )
     ref_beh_tsv = os.path.join(
-        ref_raw,
-        subj,
-        sess,
+        ref_raw_subj_sess,
         f"func/{subj}_{sess}_{task}_{run}_events.tsv",
     )
     ref_beh_json = os.path.join(
-        ref_raw,
-        subj,
-        sess,
+        ref_raw_subj_sess,
         f"func/{subj}_{sess}_{task}_{run}_events.json",
     )
 
@@ -66,6 +66,7 @@ def fixt_setup():
         "sess": sess,
         "task": task,
         "proj_dir": proj_dir,
+        "ref_raw_subj_sess": ref_raw_subj_sess,
         "ref_t1w": ref_t1w,
         "ref_deface": ref_deface,
         "ref_beh_tsv": ref_beh_tsv,
@@ -106,6 +107,8 @@ def fixt_dcm_bids(fixt_setup):
         out_dir, fixt_setup["subj"], fixt_setup["sess"], fixt_setup["task"]
     )
     t1_list = bn.bids_nii()
+    bn.update_func()
+    bn.update_fmap()
 
     # Yield dict and teardown
     yield {
@@ -177,7 +180,7 @@ def fixt_behavior(fixt_setup):
     )[0]
 
     # Execute behavior.events method
-    events_tsv, events_json = behavior.events(
+    events_tsv, events_json = behavior.events_tsv(
         task_file,
         out_dir,
         fixt_setup["subid"],
@@ -197,3 +200,54 @@ def fixt_behavior(fixt_setup):
     for h_file in [events_json, events_tsv]:
         if os.path.exists(h_file):
             os.remove(h_file)
+
+
+@pytest.fixture(scope="function")
+def fixt_rest_ratings(fixt_setup):
+    # Make rest rating output from sourcedata
+    rate_path = os.path.join(
+        fixt_setup["proj_dir"],
+        "sourcedata",
+        fixt_setup["subid"],
+        "day3_scenarios",
+        "Scanner_behav/emorep_RestRatingData_sub-ER0009_ses-day3_04282022.csv",
+    )
+    subj_raw = os.path.join(fixt_setup["test_subj_sess"], "beh")
+    if not os.path.exists(subj_raw):
+        os.makedirs(subj_raw)
+    out_file = os.path.join(
+        subj_raw,
+        f"sub-{fixt_setup['subid']}_{fixt_setup['sess']}_rest-ratings.tsv",
+    )
+    df_rest = behavior.rest_ratings(
+        rate_path, fixt_setup["subid"], fixt_setup["sess"], out_file
+    )
+    df_rest["resp_int"] = df_rest["resp_int"].astype("int64")
+
+    # Copy existing rawdata rest ratings to reference location
+    ref_beh = os.path.join(fixt_setup["ref_raw_subj_sess"], "beh")
+    if not os.path.exists(ref_beh):
+        os.makedirs(ref_beh)
+    real_file = f"{fixt_setup['subj']}_ses-day3_rest-ratings_2022-04-28.tsv"
+    rest_path = os.path.join(
+        fixt_setup["proj_dir"],
+        "rawdata",
+        fixt_setup["subj"],
+        "ses-day3/beh",
+        real_file,
+    )
+    cp_sp = subprocess.Popen(
+        f"rsync -rau {rest_path} {ref_beh}", shell=True, stdout=subprocess.PIPE
+    )
+    _ = cp_sp.communicate()
+    ref_path = os.path.join(ref_beh, real_file)
+    if not os.path.exists(ref_path):
+        raise FileNotFoundError(f"Missing reference file : {ref_path}")
+    df_ref = pd.read_csv(ref_path, sep="\t")
+
+    yield {
+        "df_rest": df_rest,
+        "df_ref": df_ref,
+    }
+
+    # TODO teardown

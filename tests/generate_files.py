@@ -40,7 +40,9 @@ def setup(subid, sess, task, run, proj_dir, unit_dir):
 
     # Set paths to project data
     proj_raw = os.path.join(proj_dir, "rawdata", f"sub-{subid}", sess)
-    proj_deface = os.path.join(proj_dir, "derivatives/deface", f"sub-{subid}")
+    proj_deface = os.path.join(
+        proj_dir, "derivatives/deface", f"sub-{subid}", sess
+    )
 
     # Copy anat
     print("\tCopying rawdata files ...")

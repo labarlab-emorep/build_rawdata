@@ -263,7 +263,9 @@ class _EventsData:
 
 
 # %%
-def _events_json(task: str, event_tsv: Union[str, os.PathLike]):
+def _events_json(
+    task: str, event_tsv: Union[str, os.PathLike]
+) -> Union[str, os.PathLike]:
     """Generate events.json, supplying custom columns and values."""
     event_dict = {
         "trial_type": {
@@ -328,6 +330,7 @@ def _events_json(task: str, event_tsv: Union[str, os.PathLike]):
     event_json = event_tsv.replace(".tsv", ".json")
     with open(event_json, "w") as jf:
         json.dump(event_dict, jf)
+    return event_json
 
 
 # %%
@@ -400,19 +403,18 @@ def events_tsv(task_file, subj_raw, subid, sess, task, run):
     events_info.df_events.to_csv(
         event_tsv, sep="\t", index=False, na_rep="NaN"
     )
-    _events_json(task, event_tsv)
+    event_json = _events_json(task, event_tsv)
+    return event_tsv, event_json
 
 
 # %%
-def rest_ratings(rate_path, subj_raw, subid, sess, out_file):
+def rest_ratings(rate_path, subid, sess, out_file):
     """Extract participant rest-rating responses.
 
     Parameters
     ----------
     rate_path : path
         Location to rest rating csv files
-    subj_raw : path
-        Location of subject's rawdata directory
     subid : str
         Subject identifier
     sess : str

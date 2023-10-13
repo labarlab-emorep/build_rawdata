@@ -71,7 +71,8 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
     # Check for previous work
     nii_list = sorted(glob.glob(f"{subj_raw}/*.nii.gz"))
     if nii_list:
-        return
+        json_list = sorted(glob.glob(f"{subj_raw}/*.json"))
+        return (nii_list, json_list)
 
     # Construct and run dcm2niix cmd
     bash_cmd = f"""\
@@ -149,6 +150,7 @@ def deface(t1_list, deriv_dir, subid, sess):
 
         # Avoid repeating work
         if os.path.exists(t1_deface):
+            deface_list.append(t1_deface)
             continue
 
         # create intermediary directory
