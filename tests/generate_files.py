@@ -47,7 +47,10 @@ def setup(subid, sess, task, run, proj_dir, unit_dir):
     # Copy anat
     print("\tCopying rawdata files ...")
     cp_anat = f"rsync -au {proj_raw}/anat/*.nii.gz {test_raw_anat}"
+    cp_json = f"rsync -au {proj_raw}/anat/*.json {test_raw_anat}"
     cp_sp = subprocess.Popen(cp_anat, shell=True, stdout=subprocess.PIPE)
+    _ = cp_sp.communicate()
+    cp_sp = subprocess.Popen(cp_json, shell=True, stdout=subprocess.PIPE)
     _ = cp_sp.communicate()
 
     # Copy func

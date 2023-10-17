@@ -83,7 +83,7 @@ def fixt_setup():
 
 
 @pytest.fixture(scope="package")
-def fixt_dcm_bids(fixt_setup):
+def fixt_dcm_niix(fixt_setup):
     # Make output dir
     out_dir = fixt_setup["test_subj_sess"]
     if not os.path.exists(out_dir):
@@ -102,24 +102,33 @@ def fixt_dcm_bids(fixt_setup):
         fixt_setup["subid"],
         fixt_setup["sess"],
     )
+    anat_nii_list = [x for x in nii_list if "EmoRep_anat" in x]
+    yield {
+        "anat_nii_list": anat_nii_list,
+        "nii_list": nii_list,
+        "json_list": json_list,
+        "out_dir": out_dir,
+    }
 
+
+@pytest.fixture(scope="package")
+def fixt_dcm_bids(fixt_setup, fixt_dcm_niix):
     bn = bidsify.BidsifyNii(
-        out_dir, fixt_setup["subj"], fixt_setup["sess"], fixt_setup["task"]
+        fixt_setup["test_subj_sess"],
+        fixt_setup["subj"],
+        fixt_setup["sess"],
+        fixt_setup["task"],
     )
     t1_list = bn.bids_nii()
     bn.update_func()
     bn.update_fmap()
 
     # Yield dict and teardown
-    yield {
-        "nii_list": nii_list,
-        "json_list": json_list,
-        "test_t1w": t1_list[0],
-    }
+    yield {"test_t1w": t1_list[0]}
 
     # TODO remove return once tests are working
     return
-    shutil.rmtree(out_dir)
+    shutil.rmtree(fixt_setup["test_subj_sess"])
 
 
 @pytest.fixture(scope="function")
