@@ -4,6 +4,10 @@ Use Chris Rorden's dcm2niix to convert DICOMs to NIfTI files. Also rename
 files and restructure directory organizaton for BIDS compliance. Finally,
 deface via AFNI's refacer.
 
+error_msg : write out standardized error messages
+dcm2niix : trigger dcm2niix for DICOM dir
+deface : conduct deface of T1w files
+
 Notes
 -----
 Assumes flat DICOM organization.

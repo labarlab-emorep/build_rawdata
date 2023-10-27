@@ -26,13 +26,20 @@ class ProcessMri:
 
     Also supports defacing for NDAR hosting.
 
+    Parameters
+    ----------
+    subid : str
+        Subject ID
+    raw_path : str, os.PathLike
+        Location of rawdata
+
     Methods
     -------
-    make_niftis(dcm_source)
+    make_niftis()
         Convert DICOMs into NIfTI format
     bidsify_niftis()
         BIDS-organize rawdata NIfTIs
-    deface_anat(deriv_dir)
+    deface_anat()
         Remove face of anatomical
 
     Example
@@ -44,9 +51,9 @@ class ProcessMri:
 
     """
 
-    def __init__(self, subid: str, raw_path: Union[str, os.PathLike]):
+    def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing _ProcessMri")
+        print("\tInitializing ProcessMri")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -74,11 +81,16 @@ class ProcessMri:
             )
             raise FileNotFoundError("No organized DICOMS found.")
 
-    def make_niftis(self, dcm_source: Union[str, os.PathLike]):
+    def make_niftis(self, dcm_source):
         """Convert sourcedata DICOMs to NIfTIs.
 
         Organizes DICOMs in dcm_source via bin/org_dcms.sh,
         then triggers process.dcm2niix.
+
+        Parameters
+        ----------
+        dcm_source : str, os.PathLike
+            Location of DICOM directory
 
         """
         # Determine session/task names and organize DICOMs
@@ -123,8 +135,15 @@ class ProcessMri:
         bn.update_func()
         bn.update_fmap()
 
-    def deface_anat(self, deriv_dir: Union[str, os.PathLike]):
-        """Deface BIDS-organized anat file."""
+    def deface_anat(self, deriv_dir):
+        """Deface BIDS-organized anat file.
+
+        Parameters
+        ----------
+        deriv_dir : str, os.PathLike
+            Location of derivatives directory
+
+        """
         if not hasattr(self, "_subj_raw") or not os.path.exists(
             os.path.join(self._subj_raw, "anat")
         ):
@@ -147,6 +166,13 @@ class ProcessBeh:
 
     Convert EmoRep task output into events sidecars, organize in rawdata.
 
+    Parameters
+    ----------
+    subid : str
+        Subject ID
+    raw_path : str, os.PathLike
+        Location of rawdata
+
     Methods
     -------
     make_events(task_path)
@@ -159,9 +185,9 @@ class ProcessBeh:
 
     """
 
-    def __init__(self, subid: str, raw_path: Union[str, os.PathLike]):
+    def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing _ProcessBeh")
+        print("\tInitializing ProcessBeh")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -216,8 +242,15 @@ class ProcessBeh:
             return False
         return True
 
-    def make_events(self, task_path: Union[str, os.PathLike]):
-        """Generate events sidecars from task csv."""
+    def make_events(self, task_path):
+        """Generate events sidecars from task csv.
+
+        Parameters
+        ----------
+        task_path : str, os.PathLike
+            Location of sourcedata task file
+
+        """
         self._task_path = task_path
         if not self._validate():
             return
@@ -255,6 +288,13 @@ class ProcessBeh:
 class ProcessRate:
     """Process post resting state endorsements for single subject.
 
+    Parameters
+    ----------
+    subid : str
+        Subject ID
+    raw_path : str, os.PathLike
+        Location of rawdata
+
     Methods
     -------
     make_rate(rate_path)
@@ -267,9 +307,9 @@ class ProcessRate:
 
     """
 
-    def __init__(self, subid: str, raw_path: Union[str, os.PathLike]):
+    def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing _ProcessRate")
+        print("\tInitializing ProcessRate")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -309,7 +349,14 @@ class ProcessRate:
         return True
 
     def make_rate(self, rate_path: Union[str, os.PathLike]):
-        """Generate rest ratings beh files."""
+        """Generate rest ratings beh files.
+
+        Parameters
+        ----------
+        rate_path : str, os.PathLike
+            Location of sourcedata rest ratings csv
+
+        """
         self._rate_path = rate_path
         if not self._validate():
             return
@@ -345,6 +392,15 @@ class ProcessPhys:
     Both copy and acq and convert into a txt format, write out
     to rawdata location.
 
+    Parameters
+    ----------
+    subid : str
+        Subject ID
+    raw_path : str, os.PathLike
+        Location of rawdata
+    deriv_dir : str, os.PathLike
+        Location of project derivatives
+
     Methods
     -------
     make_physio(phys_path)
@@ -357,14 +413,9 @@ class ProcessPhys:
 
     """
 
-    def __init__(
-        self,
-        subid: str,
-        raw_path: Union[str, os.PathLike],
-        deriv_dir: Union[str, os.PathLike],
-    ):
+    def __init__(self, subid, raw_path, deriv_dir):
         """Initialize."""
-        print("\tInitializing _ProcessPhys")
+        print("\tInitializing ProcessPhys")
         self._subid = subid
         self._raw_path = raw_path
         self._deriv_dir = deriv_dir
@@ -406,7 +457,14 @@ class ProcessPhys:
         return True
 
     def make_physio(self, phys_path: Union[str, os.PathLike]):
-        """Convert acq to txt format."""
+        """Convert acq to txt format.
+
+        Parameters
+        ----------
+        phys_path : str, os.PathLike
+            Location of sourcedata physio file
+
+        """
         self._phys_path = phys_path
         if not self._validate():
             return

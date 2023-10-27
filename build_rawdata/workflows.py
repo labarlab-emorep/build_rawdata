@@ -21,6 +21,17 @@ class BuildEmoRep:
     generating events sidecars, and moving physio data.
     Validate organization of sourcedata.
 
+    Parameters
+    ----------
+    source_path : path
+        Location of project sourcedata
+    raw_path : path
+        Location of project rawdata
+    deriv_dir : path
+        Location of project derivatives
+    do_deface : bool
+        Whether to deface T1w files
+
     Methods
     -------
     chk_sourcedata(subid)
@@ -56,20 +67,7 @@ class BuildEmoRep:
     """
 
     def __init__(self, source_path, raw_path, deriv_dir, do_deface):
-        """Initialize.
-
-        Parameters
-        ----------
-        source_path : path
-            Location of project sourcedata
-        raw_path : path
-            Location of project rawdata
-        deriv_dir : path
-            Location of project derivatives
-        do_deface : bool
-            Whether to deface T1w files
-
-        """
+        """Initialize."""
         print("Initializing BuildEmoRep")
         self._source_path = source_path
         self._raw_path = raw_path
@@ -260,7 +258,7 @@ def build_nki(
         -   download_rockland_raw_bids_ver2.py
     proj_dir : str, os.PathLike
         Parent directory of project
-    port : str
+    prot : str
         Scanning protocol
     scan : list
         Scan types to download

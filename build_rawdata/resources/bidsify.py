@@ -1,4 +1,9 @@
-"""Methods for making data BIDS compliant."""
+"""Methods for making data BIDS compliant.
+
+BidsifyNii : make dcm2niix output BIDS-compliant
+bidsify_exp : generate project-level BIDS dataset description
+
+"""
 import os
 import glob
 import shutil
@@ -9,6 +14,17 @@ from build_rawdata.resources import unique_cases
 
 class BidsifyNii:
     """Move dcm2niix output in rawdata into BIDS organiztion.
+
+    Parameters
+    ----------
+    subj_raw : str, os.PathLike
+        Location of subject and session rawdata
+    subj : str
+        BIDS subject ID
+    sess : str
+        BIDS session ID
+    task : str
+        BIDS task ID
 
     Methods
     -------
