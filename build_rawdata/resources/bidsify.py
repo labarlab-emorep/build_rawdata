@@ -42,7 +42,14 @@ class BidsifyNii:
         self._task = task
 
     def bids_nii(self):
-        """BIDS-organize NIfTI and JSON files."""
+        """BIDS-organize NIfTI and JSON files.
+
+        Returns
+        -------
+        list
+            paths to nii anat files
+
+        """
         # Find files for organizing
         nii_list = sorted(glob.glob(f"{self._subj_raw}/*.nii.gz"))
         json_list = sorted(glob.glob(f"{self._subj_raw}/*.json"))
@@ -58,7 +65,6 @@ class BidsifyNii:
             + f"{self._subj}, {self._sess} ..."
         )
         for h_file in nii_json_list:
-
             # Get first part of file name, use as key in dict-switch to
             # get (new) BIDS directory and file name. Manage new fmap
             # protocol names being called P_A_run1 and P_A_run_2.
@@ -88,6 +94,7 @@ class BidsifyNii:
         t1_list = sorted(glob.glob(f"{self._subj_raw}/anat/*T1w.nii.gz"))
         if not t1_list:
             raise FileNotFoundError("No BIDS-organized T1w files detected.")
+        return t1_list
 
     def update_func(self):
         """Updated TaskName field of func JSON sidecars."""
@@ -105,7 +112,7 @@ class BidsifyNii:
             self._update_json(func_json, "TaskName", h_task)
 
     def update_fmap(self):
-        """Updated IntendedFor field of fmap JSON sidecars."""
+        """Updated Intended for field of fmap JSON sidecars."""
         print(
             f"\t\t\t\tUpdating fmap jsons for {self._subj}, {self._sess} ..."
         )
@@ -139,7 +146,6 @@ class BidsifyNii:
         if fmap_count == 1:
             self._update_json(fmap_json_list[0], "IntendedFor", bold_list)
         elif fmap_count == 2:
-
             # Manage special cases
             subid = self._subj.split("-")[1]
             map_bold_fmap = unique_cases.fmap_issue(

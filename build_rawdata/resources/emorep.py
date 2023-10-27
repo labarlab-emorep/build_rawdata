@@ -98,7 +98,9 @@ class ProcessMri:
         chk_anat = glob.glob(f"{self._subj_raw}/anat/*.nii.gz")
         if chk_anat:
             return
-        process.dcm2niix(dcm_source, self._subj_raw, self._subid, self._sess)
+        _, _ = process.dcm2niix(
+            dcm_source, self._subj_raw, self._subid, self._sess
+        )
 
     def bidsify_niftis(self):
         """BIDS-organize raw dcm2niix output."""
@@ -244,7 +246,7 @@ class ProcessBeh:
             subj_raw, f"{self._subj}_{sess}_{task}_{run}_events.tsv"
         )
         if not os.path.exists(out_file):
-            behavior.events_tsv(
+            _, _ = behavior.events_tsv(
                 task_path, subj_raw, self._subid, sess, task, run
             )
 
@@ -333,9 +335,7 @@ class ProcessRate:
             subj_raw, f"sub-{self._subid}_{sess}_rest-ratings_{date_str}.tsv"
         )
         if not os.path.exists(out_file):
-            _ = behavior.rest_ratings(
-                rate_path, subj_raw, self._subid, sess, out_file
-            )
+            _ = behavior.rest_ratings(rate_path, self._subid, sess, out_file)
 
 
 # %%
