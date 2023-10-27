@@ -60,6 +60,7 @@ def fixt_setup():
     test_subj = os.path.join(test_dir, subj)
     test_subj_sess = os.path.join(test_subj, sess)
 
+    # Yield and teardown
     yield {
         "subid": subid,
         "subj": subj,
@@ -75,9 +76,6 @@ def fixt_setup():
         "test_subj": test_subj,
         "test_subj_sess": test_subj_sess,
     }
-
-    # TODO remove return once tests are working
-    return
     if os.path.exists(test_dir):
         shutil.rmtree(test_dir)
 
@@ -125,9 +123,6 @@ def fixt_dcm_bids(fixt_setup, fixt_dcm_niix):
 
     # Yield dict and teardown
     yield {"test_t1w": t1_list[0]}
-
-    # TODO remove return once tests are working
-    return
     shutil.rmtree(fixt_setup["test_subj_sess"])
 
 
@@ -143,9 +138,6 @@ def fixt_deface(fixt_setup):
 
     # Yield and teardown
     yield {"test_deface": deface_list[0]}
-
-    # TODO remove return once tests are working
-    return
     shutil.rmtree(os.path.join(fixt_setup["test_dir"], "deface"))
 
 
@@ -165,9 +157,6 @@ def fixt_exp_bids(fixt_setup):
         "read_me": read_me,
         "ignore_file": ignore_file,
     }
-
-    # TODO remove return once tests are working
-    return
     for h_file in [data_desc, read_me, ignore_file]:
         if os.path.exists(h_file):
             os.remove(h_file)
@@ -203,9 +192,6 @@ def fixt_behavior(fixt_setup):
         "events_tsv": events_tsv,
         "events_json": events_json,
     }
-
-    # TODO remove return once tests are working
-    return
     for h_file in [events_json, events_tsv]:
         if os.path.exists(h_file):
             os.remove(h_file)
@@ -258,5 +244,3 @@ def fixt_rest_ratings(fixt_setup):
         "df_rest": df_rest,
         "df_ref": df_ref,
     }
-
-    # TODO teardown
