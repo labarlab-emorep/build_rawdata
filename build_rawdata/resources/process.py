@@ -144,7 +144,6 @@ def deface(t1_list, deriv_dir, subid, sess):
 
     deface_list = []
     for t1_path in t1_list:
-        print(f"\t\t\tDefacing T1w for sub-{subid}, {sess} ...")
 
         # Determine input, outut paths and name
         t1_file = os.path.basename(t1_path)
@@ -156,6 +155,7 @@ def deface(t1_list, deriv_dir, subid, sess):
         if os.path.exists(t1_deface):
             deface_list.append(t1_deface)
             continue
+        print(f"\t\tDefacing T1w for sub-{subid}, {sess} ...")
 
         # create intermediary directory
         subj_reface_deriv = os.path.join(

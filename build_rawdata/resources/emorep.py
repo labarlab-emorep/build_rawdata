@@ -174,7 +174,6 @@ class ProcessMri:
             raise FileNotFoundError(
                 f"No T1w files detected in {self._subj_raw}/anat"
             )
-        print(f"\t\tDefacing anats for {self._subj} ...")
         _ = process.deface(t1_list, deriv_dir, self._subid, self._sess)
 
 
