@@ -50,7 +50,6 @@ class ProcessMri:
 
     def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing ProcessMri")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -204,7 +203,6 @@ class ProcessBeh:
 
     def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing ProcessBeh")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -326,7 +324,6 @@ class ProcessRate:
 
     def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing ProcessRate")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -433,7 +430,6 @@ class ProcessPhys:
 
     def __init__(self, subid, raw_path, deriv_dir):
         """Initialize."""
-        print("\tInitializing ProcessPhys")
         self._subid = subid
         self._raw_path = raw_path
         self._deriv_dir = deriv_dir
