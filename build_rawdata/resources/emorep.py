@@ -413,8 +413,6 @@ class ProcessPhys:
         Subject ID
     raw_path : str, os.PathLike
         Location of rawdata
-    deriv_dir : str, os.PathLike
-        Location of project derivatives
 
     Methods
     -------
@@ -428,11 +426,10 @@ class ProcessPhys:
 
     """
 
-    def __init__(self, subid, raw_path, deriv_dir):
+    def __init__(self, subid, raw_path):
         """Initialize."""
         self._subid = subid
         self._raw_path = raw_path
-        self._deriv_dir = deriv_dir
 
     def _validate(self) -> bool:
         """Validate naming and organization of sourcedata physio files."""
@@ -500,12 +497,8 @@ class ProcessPhys:
         subj_phys = os.path.join(
             self._raw_path, f"sub-{self._subid}/{sess}/phys"
         )
-        subj_deriv = os.path.join(
-            self._deriv_dir, "scr_autonomate", f"sub-{self._subid}/{sess}"
-        )
-        for h_dir in [subj_phys, subj_deriv]:
-            if not os.path.exists(h_dir):
-                os.makedirs(h_dir)
+        if not os.path.exists(subj_phys):
+            os.makedirs(subj_phys)
         dest_orig = os.path.join(subj_phys, os.path.basename(phys_path))
         dest_acq = os.path.join(
             subj_phys,

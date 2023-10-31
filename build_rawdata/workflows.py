@@ -208,9 +208,7 @@ class BuildEmoRep:
                 + f"sub-{self._subid}, skipping."
             )
             return
-        mk_phys = emorep.ProcessPhys(
-            self._subid, self._raw_path, self._deriv_dir
-        )
+        mk_phys = emorep.ProcessPhys(self._subid, self._raw_path)
         for phys_path in phys_list:
             mk_phys.make_physio(phys_path)
 
