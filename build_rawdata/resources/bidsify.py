@@ -120,9 +120,10 @@ class BidsifyNii:
         )
         func_json_all = sorted(glob.glob(f"{self._subj_raw}/func/*_bold.json"))
         if not func_json_all:
-            raise ValueError(
+            print(
                 "No BIDS-organized func files found, try BidsifyNii.bids_nii"
             )
+            return
         for func_json in func_json_all:
             h_task = func_json.split("_task-")[1].split("_")[0]
             self._update_json(func_json, "TaskName", h_task)
@@ -136,9 +137,10 @@ class BidsifyNii:
         # Get, validate list of fmap json files
         fmap_json_list = sorted(glob.glob(f"{self._subj_raw}/fmap/*json"))
         if not fmap_json_list:
-            raise ValueError(
+            print(
                 "No BIDS-organized fmap files found, try BidsifyNii.bids_nii"
             )
+            return
         fmap_count = len(fmap_json_list)
         if fmap_count > 2:
             raise ValueError("More than 2 fmap images found!")

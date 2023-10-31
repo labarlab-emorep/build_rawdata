@@ -134,14 +134,7 @@ class BuildEmoRep:
         # Process MRI data
         mk_mri = emorep.ProcessMri(self._subid, self._raw_path)
         for dcm_source in dcm_list:
-            chk_dcm = glob.glob(f"{dcm_source}/**/*.dcm", recursive=True)
-            if not chk_dcm:
-                print(f"\tNo DICOMs found at {dcm_source}, skipping ...")
-                continue
-
-            # Make NIfTI, bidsify, and deface
-            mk_mri.make_niftis(dcm_source)
-            mk_mri.bidsify_niftis()
+            mk_mri.bids_nii(dcm_source)
             if self._do_deface:
                 mk_mri.deface_anat(self._deriv_dir)
 
