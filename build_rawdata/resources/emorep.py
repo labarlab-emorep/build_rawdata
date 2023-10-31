@@ -93,18 +93,23 @@ class ProcessMri:
         Returns
         -------
         tuple
-            [0] = None, list of dcm2niix output
+            [0] = bool, list of dcm2niix output
+                True = bidsified anat files found
+                False = no dcms found
             [1] = None, list of bidsified anat nii
+                if bidsification of niis was triggered
 
         """
+        # Make niis, determine if pipeline through bidsification
+        # should continue
         self._dcm_source = dcm_source
         cont_pipe = self._make_niftis()
-        if cont_pipe:
+        if isinstance(cont_pipe, list):
             anat_list = self._bidsify_niftis()
             return (cont_pipe, anat_list)
         return (cont_pipe, None)
 
-    def _make_niftis(self) -> Union[None, list]:
+    def _make_niftis(self) -> Union[bool, list]:
         """Organize dcms and trigger dcm2niix, return nii list."""
         # Determine session/task names
         sess_dir = os.path.basename(os.path.dirname(self._dcm_source))
@@ -115,10 +120,10 @@ class ProcessMri:
         # Check for previous work, required files
         self._subj_raw = os.path.join(self._raw_path, self._subj, self._sess)
         if glob.glob(f"{self._subj_raw}/anat/*.nii.gz"):
-            return None
+            return True
         if not glob.glob(f"{self._dcm_source}/**/*.dcm", recursive=True):
             print(f"\tNo DICOMs found at {self._dcm_source}, skipping ...")
-            return None
+            return False
 
         # Organize DICOMs in sourcedata
         self._organize_dcms()

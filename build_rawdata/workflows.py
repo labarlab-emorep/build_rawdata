@@ -134,8 +134,8 @@ class BuildEmoRep:
         # Process MRI data
         mk_mri = emorep.ProcessMri(self._subid, self._raw_path)
         for dcm_source in dcm_list:
-            mk_mri.bids_nii(dcm_source)
-            if self._do_deface:
+            cont_pipe, _ = mk_mri.bids_nii(dcm_source)
+            if self._do_deface and cont_pipe:
                 mk_mri.deface_anat(self._deriv_dir)
 
     def convert_beh(self):
