@@ -35,25 +35,21 @@ class ProcessMri:
 
     Methods
     -------
-    make_niftis()
-        Convert DICOMs into NIfTI format
-    bidsify_niftis()
-        BIDS-organize rawdata NIfTIs
+    bids_nii()
+        Convert DICOMs into NIfTI format, then BIDS oragnize
     deface_anat()
         Remove face of anatomical
 
     Example
     -------
     pm = ProcessMri("ER0009", "/path/to/rawdata")
-    pm.make_niftis("/path/to/ER0009/day2_movies/DICOM")
-    pm.bidsify_niftis()
+    pm.bids_nii("/path/to/ER0009/day2_movies/DICOM")
     pm.deface_anat("/path/to/derivatives")
 
     """
 
     def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing ProcessMri")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -81,59 +77,80 @@ class ProcessMri:
             )
             raise FileNotFoundError("No organized DICOMS found.")
 
-    def make_niftis(self, dcm_source):
+    def bids_nii(self, dcm_source):
         """Convert sourcedata DICOMs to NIfTIs.
 
         Organizes DICOMs in dcm_source via bin/org_dcms.sh,
-        then triggers process.dcm2niix.
+        then triggers process.dcm2niix. Finally, BIDS
+        organize dcm2niix output.
 
         Parameters
         ----------
         dcm_source : str, os.PathLike
             Location of DICOM directory
 
+        Returns
+        -------
+        tuple
+            [0] = bool, list of dcm2niix output
+                True = bidsified anat files found
+                False = no dcms found
+            [1] = None, list of bidsified anat nii
+                if bidsification of niis was triggered
+
         """
-        # Determine session/task names and organize DICOMs
+        # Make niis, determine if pipeline through bidsification
+        # should continue
         self._dcm_source = dcm_source
-        sess_dir = os.path.basename(os.path.dirname(dcm_source))
+        cont_pipe = self._make_niftis()
+        if isinstance(cont_pipe, list):
+            anat_list = self._bidsify_niftis()
+            return (cont_pipe, anat_list)
+        return (cont_pipe, None)
+
+    def _make_niftis(self) -> Union[bool, list]:
+        """Organize dcms and trigger dcm2niix, return nii list."""
+        # Determine session/task names
+        sess_dir = os.path.basename(os.path.dirname(self._dcm_source))
         _day, _tname = sess_dir.split("_")
         self._sess = f"ses-{_day}"
         self._task = f"task-{_tname}"
+
+        # Check for previous work, required files
+        self._subj_raw = os.path.join(self._raw_path, self._subj, self._sess)
+        if glob.glob(f"{self._subj_raw}/anat/*.nii.gz"):
+            return True
+        if not glob.glob(f"{self._dcm_source}/**/*.dcm", recursive=True):
+            print(f"\tNo DICOMs found at {self._dcm_source}, skipping ...")
+            return False
+
+        # Organize DICOMs in sourcedata
         self._organize_dcms()
 
         # Setup, check for previous, and run dcm conversion
         print(f"\t\tMaking NIfTIs for {self._subj}, {self._sess} ...")
-        self._subj_raw = os.path.join(self._raw_path, self._subj, self._sess)
         if not os.path.exists(self._subj_raw):
             os.makedirs(self._subj_raw)
-
-        chk_anat = glob.glob(f"{self._subj_raw}/anat/*.nii.gz")
-        if chk_anat:
-            return
-        _, _ = process.dcm2niix(
-            dcm_source, self._subj_raw, self._subid, self._sess
+        nii_list, json_list = process.dcm2niix(
+            self._dcm_source, self._subj_raw, self._subid, self._sess
         )
+        return nii_list
 
-    def bidsify_niftis(self):
-        """BIDS-organize raw dcm2niix output."""
-        if not hasattr(self, "_subj_raw") or not hasattr(self, "_sess"):
-            raise AttributeError(
-                "_ProcessMri.bidsify_niftis requires _ProcessMri.make_niftis"
-                + " to be run first."
-            )
-
+    def _bidsify_niftis(self) -> list:
+        """BIDS-organize raw dcm2niix output, return anat list."""
         # Check for previous BIDS, run bidsify
-        chk_bids = glob.glob(f"{self._subj_raw}/anat/*.nii.gz")
-        if chk_bids:
-            return
+        anat_list = glob.glob(f"{self._subj_raw}/anat/*.nii.gz")
+        if anat_list:
+            return anat_list
 
         print(f"\t\tBIDs-ifying NIfTIs for {self._subj}, {self._sess} ...")
         bn = bidsify.BidsifyNii(
             self._subj_raw, self._subj, self._sess, self._task
         )
-        bn.bids_nii()
+        anat_list = bn.bids_nii()
         bn.update_func()
         bn.update_fmap()
+        return anat_list
 
     def deface_anat(self, deriv_dir):
         """Deface BIDS-organized anat file.
@@ -148,15 +165,14 @@ class ProcessMri:
             os.path.join(self._subj_raw, "anat")
         ):
             raise RuntimeError(
-                "_ProcessMri.deface_anat requires both _ProcessMri.make_niftis"
-                + " and _ProcessMri.bidsify_niftis to be run first"
+                "ProcessMri.deface_anat requires ProcessMri.bids_nii "
+                + "to be run first"
             )
         t1_list = sorted(glob.glob(f"{self._subj_raw}/anat/*T1w.nii.gz"))
         if not t1_list:
             raise FileNotFoundError(
                 f"No T1w files detected in {self._subj_raw}/anat"
             )
-        print(f"\t\tDefacing anats for {self._subj} ...")
         _ = process.deface(t1_list, deriv_dir, self._subid, self._sess)
 
 
@@ -187,7 +203,6 @@ class ProcessBeh:
 
     def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing ProcessBeh")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -268,10 +283,6 @@ class ProcessBeh:
         task = f"task-{_tname}"
 
         # Setup output location, make events sidecar
-        print(
-            "\t\tMaking behavior events.tsv for "
-            + f"{self._subj}, {sess} {run}"
-        )
         subj_raw = os.path.join(self._raw_path, f"{self._subj}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
@@ -279,6 +290,10 @@ class ProcessBeh:
             subj_raw, f"{self._subj}_{sess}_{task}_{run}_events.tsv"
         )
         if not os.path.exists(out_file):
+            print(
+                "\t\tMaking behavior events.tsv for "
+                + f"{self._subj}, {sess} {run}"
+            )
             _, _ = behavior.events_tsv(
                 task_path, subj_raw, self._subid, sess, task, run
             )
@@ -309,7 +324,6 @@ class ProcessRate:
 
     def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing ProcessRate")
         self._subid = subid
         self._subj = f"sub-{subid}"
         self._raw_path = raw_path
@@ -375,14 +389,15 @@ class ProcessRate:
         h_date = date_ext.split(".")[0]
         date_time = datetime.strptime(h_date, "%m%d%Y")
         date_str = datetime.strftime(date_time, "%Y-%m-%d")
-
-        # Make rawdata file
-        print("\t\tMaking rest ratings.tsv for " + f"{self._subj}, {sess} ...")
         out_file = os.path.join(
             subj_raw, f"sub-{self._subid}_{sess}_rest-ratings_{date_str}.tsv"
         )
-        if not os.path.exists(out_file):
-            _ = behavior.rest_ratings(rate_path, self._subid, sess, out_file)
+        if os.path.exists(out_file):
+            return
+
+        # Make rawdata file
+        print("\t\tMaking rest ratings.tsv for " + f"{self._subj}, {sess} ...")
+        _ = behavior.rest_ratings(rate_path, self._subid, sess, out_file)
 
 
 # %%
@@ -398,8 +413,6 @@ class ProcessPhys:
         Subject ID
     raw_path : str, os.PathLike
         Location of rawdata
-    deriv_dir : str, os.PathLike
-        Location of project derivatives
 
     Methods
     -------
@@ -413,12 +426,10 @@ class ProcessPhys:
 
     """
 
-    def __init__(self, subid, raw_path, deriv_dir):
+    def __init__(self, subid, raw_path):
         """Initialize."""
-        print("\tInitializing ProcessPhys")
         self._subid = subid
         self._raw_path = raw_path
-        self._deriv_dir = deriv_dir
 
     def _validate(self) -> bool:
         """Validate naming and organization of sourcedata physio files."""
@@ -483,19 +494,11 @@ class ProcessPhys:
             task = "task-rest"
 
         # Setup output dir/name
-        print(
-            "\t\tProcessing physio files for "
-            + f"sub-{self._subid}, {sess} {run} {task}"
-        )
         subj_phys = os.path.join(
             self._raw_path, f"sub-{self._subid}/{sess}/phys"
         )
-        subj_deriv = os.path.join(
-            self._deriv_dir, "scr_autonomate", f"sub-{self._subid}/{sess}"
-        )
-        for h_dir in [subj_phys, subj_deriv]:
-            if not os.path.exists(h_dir):
-                os.makedirs(h_dir)
+        if not os.path.exists(subj_phys):
+            os.makedirs(subj_phys)
         dest_orig = os.path.join(subj_phys, os.path.basename(phys_path))
         dest_acq = os.path.join(
             subj_phys,
@@ -506,6 +509,10 @@ class ProcessPhys:
         # Generate tsv dataframe and copy data
         if os.path.exists(dest_acq):
             return
+        print(
+            "\t\tProcessing physio files for "
+            + f"sub-{self._subid}, {sess} {run} {task}"
+        )
         try:
             df_phys, _ = nk.read_acqknowledge(phys_path)
             df_phys = df_phys.round(6)
