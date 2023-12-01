@@ -142,7 +142,7 @@ Also, see [Diagrams](#diagrams).
 
 
 ## build_nki
-Build BIDS rawdata for Exp3_Classify_Archival (archival). This will download archival data from the Nathan Kline Institute archival dataset and BIDS-organize certain files for resting-state analyses.
+Build BIDS rawdata for Exp3_Classify_Archival (archival). This will download archival data from the [Nathan Kline Institute](http://fcon_1000.projects.nitrc.org/indi/enhanced/index.html) archival dataset and BIDS-organize certain files for resting-state analyses.
 
 Contents:
 - [Setup](#setup-1)
