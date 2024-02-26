@@ -1,14 +1,15 @@
-"""Generate events files.
+"""Manage in-scanner task responses.
 
-Construct BIDS events sidecar and json files
-for fMRI data.
+events_tsv : generate BIDS events.tsv and events.json func sidecars
+rest_ratings : aggregate, clean post-rest ratings
 
 """
+
 import os
 import json
 import pandas as pd
 import numpy as np
-from typing import Union
+from typing import Union, Tuple
 from build_rawdata.resources import unique_cases
 
 
@@ -19,7 +20,12 @@ class _EventsData:
     Extract specified values from task csv files to construct
     BIDS events sidecars for func data.
 
-    Written for EmoRep movies and scenarios tasks.
+    Parameters
+    ----------
+    task_file : str, os.PathLike
+        Location of task csv file for run
+    resp_na : str, optional
+        Not applicable indicator
 
     Attributes
     ----------
@@ -28,32 +34,22 @@ class _EventsData:
 
     Methods
     -------
-    get_info(event_name, event_on, event_off)
+    get_info()
         Extract information for a certain event type
+
+    Notes
+    -----
+    Written for EmoRep movies and scenarios tasks.
+
+    Example
+    -------
+    ev_info = behavior._EventsData(*args)
+    ev_info.get_info("judge", "JudgeOnset", "JudgeOffset")
 
     """
 
     def __init__(self, task_file, resp_na="n/a"):
-        """Read-in data and start output dataframe.
-
-        Parameters
-        ----------
-        task_file : path
-            Location of task csv file for run
-        resp_na : str
-            Not applicable indecator
-            (default : "n/a")
-
-        Attributes
-        ----------
-        df_events : pd.DataFrame
-            Extracted BIDS events info
-        _df_run : pd.DataFrame
-            Task info from run file
-        _resp_na : str
-            Not applicable indecator
-
-        """
+        """Read-in data and start output dataframe."""
         self._df_run = pd.read_csv(task_file, na_values=["None", "none"])
         self._resp_na = resp_na
         events_cols = [
@@ -68,23 +64,8 @@ class _EventsData:
         ]
         self.df_events = pd.DataFrame(columns=events_cols)
 
-    def _stim_info(self, event_name, idx_onset):
-        """Conditionally get event stimulus info.
-
-        Parameters
-        ----------
-        event_name : str
-            User-specified event name, for trial_type
-        idx_onset : list
-            Indices where self._df_run["type"] has the onset string
-
-        Returns
-        -------
-        tuple
-            [0] = list of event-specific stimulus info
-            [1] = list of stimulus emotion, or not applicable
-
-        """
+    def _stim_info(self, event_name: str, idx_onset: list) -> Tuple:
+        """Conditionally get event stimulus info."""
         # Setup string switch for certain events
         stim_switch = {
             "fixS": "fixation_cross",
@@ -113,18 +94,11 @@ class _EventsData:
 
         return (h_stim_info, h_stim_emo)
 
-    def _judge_resp(self):
+    def _judge_resp(self) -> Tuple:
         """Get and parse judgment responses.
 
         Deals with differing captures of JudgeResponse between
         movie and scenario versions of task.
-
-        Returns
-        -------
-        triple
-            [0] = list of judgment response indices
-            [1] = list of judgment resposnes
-            [2] = list of judgment accuracies
 
         """
         idx_jud_resp = self._df_run.index[
@@ -143,28 +117,14 @@ class _EventsData:
 
         return (idx_jud_resp, jud_resp, jud_acc)
 
-    def _resp_time(self, event_name, event_onset, idx_onset, idx_offset):
-        """Conditionally get response, response time.
-
-        Parameters
-        ----------
-        event_name : str
-            User-specified event name, for trial_type
-        event_onset : list
-            Start times from self._df_run["timefromstart"]
-        idx_onset : list
-            Indices where self._df_run["type"] has the onset string
-        idx_offset : list
-            Indices where self._df_run["type"] has the offset string
-
-        Returns
-        -------
-        tuple
-            [0] = list of participant event responses, or not applicable
-            [1] = list of participant event response times, or
-                    not applicable
-
-        """
+    def _resp_time(
+        self,
+        event_name: str,
+        event_onset: list,
+        idx_onset: list,
+        idx_offset: list,
+    ) -> Tuple:
+        """Conditionally get response, response time."""
         if event_name in ["emotion", "intensity"]:
             h_resp = self._df_run.loc[idx_offset, "stimdescrip"].tolist()
             h_resp_time = self._df_run.loc[
@@ -186,7 +146,7 @@ class _EventsData:
         return (h_resp, h_resp_time)
 
     def get_info(self, event_name, event_on, event_off):
-        """Mine task file for events info.
+        """Mine task file for events info and set df_events attr.
 
         Extact values to fill self.df_events for the columns found
         in events_cols. Extracts values based on input parameters.
@@ -202,8 +162,8 @@ class _EventsData:
 
         Notes
         -----
-        Updates (appends)self.df_events with event-specific information, then
-        sorts by onset time.
+        Updates (appends) self.df_events with event-specific information,
+        then sorts by onset time.
 
         """
         # Get index of event onset and offset
@@ -263,7 +223,9 @@ class _EventsData:
 
 
 # %%
-def _events_json(task: str, event_tsv: Union[str, os.PathLike]):
+def _events_json(
+    task: str, event_tsv: Union[str, os.PathLike]
+) -> Union[str, os.PathLike]:
     """Generate events.json, supplying custom columns and values."""
     event_dict = {
         "trial_type": {
@@ -328,6 +290,7 @@ def _events_json(task: str, event_tsv: Union[str, os.PathLike]):
     event_json = event_tsv.replace(".tsv", ".json")
     with open(event_json, "w") as jf:
         json.dump(event_dict, jf)
+    return event_json
 
 
 # %%
@@ -339,9 +302,9 @@ def events_tsv(task_file, subj_raw, subid, sess, task, run):
 
     Parameters
     ----------
-    task_file : path
+    task_file : str, os.PathLike
         Location of task run file
-    subj_raw : path
+    subj_raw : str, os.PathLike
         Location of subject's rawdata directory
     subid : str
         Subject identifier
@@ -400,19 +363,18 @@ def events_tsv(task_file, subj_raw, subid, sess, task, run):
     events_info.df_events.to_csv(
         event_tsv, sep="\t", index=False, na_rep="NaN"
     )
-    _events_json(task, event_tsv)
+    event_json = _events_json(task, event_tsv)
+    return event_tsv, event_json
 
 
 # %%
-def rest_ratings(rate_path, subj_raw, subid, sess, out_file):
+def rest_ratings(rate_path, subid, sess, out_file):
     """Extract participant rest-rating responses.
 
     Parameters
     ----------
     rate_path : path
         Location to rest rating csv files
-    subj_raw : path
-        Location of subject's rawdata directory
     subid : str
         Subject identifier
     sess : str

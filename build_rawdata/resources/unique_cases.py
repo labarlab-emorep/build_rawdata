@@ -4,6 +4,9 @@ Inevitably some participants will have idiosyncratic data,
 or a protocol will change, resulting in special cases that
 need to be treated specially by the package.
 
+wash_issue : manage WashStimOffset error for first few participants
+fmap_issue : change fmap-func pairings, case-by-case
+
 """
 import json
 import importlib.resources as pkg_resources

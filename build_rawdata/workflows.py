@@ -4,6 +4,7 @@ BuildEmoRep : Build rawdata for Exp2_Compute_Emotion
 build_nki   : Get NKI Rockland Archival data for Exp3_Classify_Archival
 
 """
+
 # %%
 import os
 import glob
@@ -21,9 +22,20 @@ class BuildEmoRep:
     generating events sidecars, and moving physio data.
     Validate organization of sourcedata.
 
+    Parameters
+    ----------
+    source_path : str, os.PathLike
+        Location of project sourcedata
+    raw_path : str, os.PathLike
+        Location of project rawdata
+    deriv_dir : str, os.PathLike
+        Location of project derivatives
+    do_deface : bool
+        Whether to deface T1w files
+
     Methods
     -------
-    chk_sourcedata(subid)
+    chk_sourcedata()
         Check for basic organization of subject sourcedata
     convert_mri()
         Convert MRI sourcedata to BIDS-formatted rawdata
@@ -56,20 +68,7 @@ class BuildEmoRep:
     """
 
     def __init__(self, source_path, raw_path, deriv_dir, do_deface):
-        """Initialize.
-
-        Parameters
-        ----------
-        source_path : path
-            Location of project sourcedata
-        raw_path : path
-            Location of project rawdata
-        deriv_dir : path
-            Location of project derivatives
-        do_deface : bool
-            Whether to deface T1w files
-
-        """
+        """Initialize."""
         print("Initializing BuildEmoRep")
         self._source_path = source_path
         self._raw_path = raw_path
@@ -136,15 +135,8 @@ class BuildEmoRep:
         # Process MRI data
         mk_mri = emorep.ProcessMri(self._subid, self._raw_path)
         for dcm_source in dcm_list:
-            chk_dcm = glob.glob(f"{dcm_source}/**/*.dcm", recursive=True)
-            if not chk_dcm:
-                print(f"\tNo DICOMs found at {dcm_source}, skipping ...")
-                continue
-
-            # Make NIfTI, bidsify, and deface
-            mk_mri.make_niftis(dcm_source)
-            mk_mri.bidsify_niftis()
-            if self._do_deface:
+            cont_pipe, _ = mk_mri.bids_nii(dcm_source)
+            if self._do_deface and cont_pipe:
                 mk_mri.deface_anat(self._deriv_dir)
 
     def convert_beh(self):
@@ -217,9 +209,7 @@ class BuildEmoRep:
                 + f"sub-{self._subid}, skipping."
             )
             return
-        mk_phys = emorep.ProcessPhys(
-            self._subid, self._raw_path, self._deriv_dir
-        )
+        mk_phys = emorep.ProcessPhys(self._subid, self._raw_path)
         for phys_path in phys_list:
             mk_phys.make_physio(phys_path)
 
@@ -260,7 +250,7 @@ def build_nki(
         -   download_rockland_raw_bids_ver2.py
     proj_dir : str, os.PathLike
         Parent directory of project
-    port : str
+    prot : str
         Scanning protocol
     scan : list
         Scan types to download

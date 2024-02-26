@@ -4,12 +4,17 @@ Use Chris Rorden's dcm2niix to convert DICOMs to NIfTI files. Also rename
 files and restructure directory organizaton for BIDS compliance. Finally,
 deface via AFNI's refacer.
 
+error_msg : write out standardized error messages
+dcm2niix : trigger dcm2niix for DICOM dir
+deface : conduct deface of T1w files
+
 Notes
 -----
 Assumes flat DICOM organization.
 Assumes T1w exist for each session.
 
 """
+
 import os
 import shutil
 import glob
@@ -42,14 +47,20 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
 
     Parameters
     ----------
-    subj_source : path
+    subj_source : str, os.PathLike
         Subject's DICOM directory in sourcedata
-    subj_raw : path
+    subj_raw : str, os.PathLike
         Subject's rawdata directory
     subid : str
         Subject identifier
     sess : str
         BIDS-formatted session string
+
+    Returns
+    -------
+    tuple
+        [0] = list of paths to niis
+        [1] = list of paths to jsons
 
     Notes
     -----
@@ -65,7 +76,8 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
     # Check for previous work
     nii_list = sorted(glob.glob(f"{subj_raw}/*.nii.gz"))
     if nii_list:
-        return
+        json_list = sorted(glob.glob(f"{subj_raw}/*.json"))
+        return (nii_list, json_list)
 
     # Construct and run dcm2niix cmd
     bash_cmd = f"""\
@@ -94,6 +106,7 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
         raise FileNotFoundError("No NIfTI files detected.")
     elif len(nii_list) != len(json_list):
         raise FileNotFoundError("Unbalanced number of NIfTI and JSON files.")
+    return (nii_list, json_list)
 
 
 def deface(t1_list, deriv_dir, subid, sess):
@@ -132,7 +145,6 @@ def deface(t1_list, deriv_dir, subid, sess):
 
     deface_list = []
     for t1_path in t1_list:
-        print(f"\t\t\tDefacing T1w for sub-{subid}, {sess} ...")
 
         # Determine input, outut paths and name
         t1_file = os.path.basename(t1_path)
@@ -142,18 +154,18 @@ def deface(t1_list, deriv_dir, subid, sess):
 
         # Avoid repeating work
         if os.path.exists(t1_deface):
+            deface_list.append(t1_deface)
             continue
+        print(f"\t\tDefacing T1w for sub-{subid}, {sess} ...")
 
-        # create intermediary directory
-        subj_reface_deriv = os.path.join(
-            deriv_dir, "reface", f"sub-{subid}", sess
-        )
+        # Create intermediary directory, split path for cleaning
+        reface_deriv = os.path.join(deriv_dir, "reface")
+        subj_reface_deriv = os.path.join(reface_deriv, f"sub-{subid}", sess)
         if not os.path.exists(subj_reface_deriv):
             os.makedirs(subj_reface_deriv)
 
-        reface_output = os.path.join(subj_reface_deriv, "refaced.nii.gz")
-
         # Run afni refacer to deface t1w
+        reface_output = os.path.join(subj_reface_deriv, "refaced.nii.gz")
         bash_reface_cmd = f"""\
             @afni_refacer_run \
             -input {t1_path} \
@@ -166,16 +178,15 @@ def deface(t1_list, deriv_dir, subid, sess):
         job_out, job_err = h_sp.communicate()
         h_sp.wait()
 
-        # Check
+        # Check, move refaced file to deface location
         if not os.path.exists(reface_output):
             raise FileNotFoundError(
                 f"Afni_refacer_run failed for {subid} {sess}."
             )
-
         shutil.copy(reface_output, t1_deface)
 
-        # cleaning up
-        shutil.rmtree(subj_reface_deriv)
-        deface_list.append(reface_output)
+        # Cleaning up
+        shutil.rmtree(reface_deriv)
+        deface_list.append(t1_deface)
 
     return deface_list
