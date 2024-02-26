@@ -4,6 +4,7 @@ BuildEmoRep : Build rawdata for Exp2_Compute_Emotion
 build_nki   : Get NKI Rockland Archival data for Exp3_Classify_Archival
 
 """
+
 # %%
 import os
 import glob
@@ -23,18 +24,18 @@ class BuildEmoRep:
 
     Parameters
     ----------
-    source_path : path
+    source_path : str, os.PathLike
         Location of project sourcedata
-    raw_path : path
+    raw_path : str, os.PathLike
         Location of project rawdata
-    deriv_dir : path
+    deriv_dir : str, os.PathLike
         Location of project derivatives
     do_deface : bool
         Whether to deface T1w files
 
     Methods
     -------
-    chk_sourcedata(subid)
+    chk_sourcedata()
         Check for basic organization of subject sourcedata
     convert_mri()
         Convert MRI sourcedata to BIDS-formatted rawdata

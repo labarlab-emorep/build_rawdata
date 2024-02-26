@@ -14,6 +14,7 @@ Assumes flat DICOM organization.
 Assumes T1w exist for each session.
 
 """
+
 import os
 import shutil
 import glob
@@ -46,9 +47,9 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
 
     Parameters
     ----------
-    subj_source : path
+    subj_source : str, os.PathLike
         Subject's DICOM directory in sourcedata
-    subj_raw : path
+    subj_raw : str, os.PathLike
         Subject's rawdata directory
     subid : str
         Subject identifier

@@ -4,6 +4,7 @@ events_tsv : generate BIDS events.tsv and events.json func sidecars
 rest_ratings : aggregate, clean post-rest ratings
 
 """
+
 import os
 import json
 import pandas as pd
@@ -19,11 +20,9 @@ class _EventsData:
     Extract specified values from task csv files to construct
     BIDS events sidecars for func data.
 
-    Written for EmoRep movies and scenarios tasks.
-
     Parameters
     ----------
-    task_file : path
+    task_file : str, os.PathLike
         Location of task csv file for run
     resp_na : str, optional
         Not applicable indicator
@@ -37,6 +36,10 @@ class _EventsData:
     -------
     get_info()
         Extract information for a certain event type
+
+    Notes
+    -----
+    Written for EmoRep movies and scenarios tasks.
 
     Example
     -------
@@ -143,7 +146,7 @@ class _EventsData:
         return (h_resp, h_resp_time)
 
     def get_info(self, event_name, event_on, event_off):
-        """Mine task file for events info.
+        """Mine task file for events info and set df_events attr.
 
         Extact values to fill self.df_events for the columns found
         in events_cols. Extracts values based on input parameters.
@@ -299,9 +302,9 @@ def events_tsv(task_file, subj_raw, subid, sess, task, run):
 
     Parameters
     ----------
-    task_file : path
+    task_file : str, os.PathLike
         Location of task run file
-    subj_raw : path
+    subj_raw : str, os.PathLike
         Location of subject's rawdata directory
     subid : str
         Subject identifier

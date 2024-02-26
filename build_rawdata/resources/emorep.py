@@ -6,6 +6,7 @@ ProcessRate : manage resting endoresements
 ProcessPhys : manage physio data
 
 """
+
 import os
 import re
 import glob
@@ -467,7 +468,7 @@ class ProcessPhys:
             return False
         return True
 
-    def make_physio(self, phys_path: Union[str, os.PathLike]):
+    def make_physio(self, phys_path):
         """Convert acq to txt format.
 
         Parameters

@@ -18,6 +18,7 @@ build_nki -t anat func --age 80 --dryrun
 build_nki -t anat func --protocol REST645 --session BAS3 --dryrun
 
 """
+
 # %%
 import os
 import sys
@@ -52,13 +53,9 @@ def get_args():
     )
     parser.add_argument(
         "--hand",
-        help=textwrap.dedent(
-            """\
-            ["L", "R"]
-            Handedness of participants, unspecified pulls both
-            """
-        ),
-        type=int,
+        help="Handedness of participants, unspecified pulls both",
+        choices=["L", "R"],
+        type=str,
     )
     parser.add_argument(
         "--nki-dir",
@@ -85,9 +82,9 @@ def get_args():
     parser.add_argument(
         "--protocol",
         default="REST1400",
+        choices=["REST645", "REST1400", "RESTCAP", "RESTPCASL"],
         help=textwrap.dedent(
             """\
-            ["REST645", "REST1400", "RESTCAP", "RESTPCASL"]
             Resting protocol name
             (default : %(default)s)
             """
@@ -97,9 +94,9 @@ def get_args():
     parser.add_argument(
         "--session",
         default="BAS1",
+        choices=["BAS1", "BAS2", "BAS3"],
         help=textwrap.dedent(
             """\
-            ["BAS1", "BAS2", "BAS3"]
             Session, Visit name
             (default : %(default)s)
             """
@@ -112,12 +109,8 @@ def get_args():
         "-t",
         "--scan-type",
         nargs="+",
-        help=textwrap.dedent(
-            """\
-            ["anat", "func", "dwi"]
-            Scan type(s) to download
-            """
-        ),
+        choices=["anat", "func", "dwi"],
+        help="Scan type(s) to download",
         type=str,
         required=True,
     )
