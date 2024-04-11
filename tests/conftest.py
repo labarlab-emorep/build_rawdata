@@ -1,7 +1,9 @@
 import pytest
 import os
 import shutil
+import glob
 from build_rawdata.resources import behavior
+from build_rawdata.resources import process
 
 
 class SupplyVars:
@@ -17,13 +19,17 @@ def fixt_setup():
     # Hardcode variables for specific testing
     obj_setup.subjid = "ER0009"
     obj_setup.sessid = "day3"
+    obj_setup.runid = "01"
     obj_setup.taskid = "scenarios"
     obj_setup.subj = "sub-" + obj_setup.subjid
     obj_setup.sess = "ses-" + obj_setup.sessid
     obj_setup.task = "task-" + obj_setup.taskid
-    obj_setup.run = "run-01"
+    obj_setup.run = "run-" + obj_setup.runid
+
+    # Setup paths
     par_dir = "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
     obj_setup.proj_dir = os.path.join(par_dir, "data_scanner_BIDS")
+    obj_setup.test_dir = os.path.join(par_dir, "code/unit_test/build_rawdata")
     obj_setup.subj_source = os.path.join(
         obj_setup.proj_dir,
         "sourcedata",
@@ -32,7 +38,6 @@ def fixt_setup():
     )
 
     # Make testing output parent directories
-    obj_setup.test_dir = os.path.join(par_dir, "code/unit_test/build_rawdata")
     for _dir in ["rawdata", "derivatives"]:
         mk_dir = os.path.join(obj_setup.test_dir, _dir)
         if not os.path.exists(mk_dir):
@@ -40,7 +45,7 @@ def fixt_setup():
 
     # Yield and teardown
     yield obj_setup
-    # return  # TODO remove
+    return  # TODO remove
     shutil.rmtree(obj_setup.test_dir)
 
 
@@ -55,10 +60,10 @@ def fixt_behavior(fixt_setup):
         + f"ses{fixt_setup.sessid}_run1_04282022.csv",
     )
 
-    #
+    # Start obj for making events TSV
     obj_beh.ev_info = behavior._EventsData(task_path)
 
-    #
+    # Get output from events_tsv
     subj_raw = os.path.join(
         fixt_setup.test_dir,
         "rawdata",
@@ -77,7 +82,7 @@ def fixt_behavior(fixt_setup):
         fixt_setup.run,
     )
 
-    #
+    # Get output from rest_ratings
     rate_path = os.path.join(
         fixt_setup.subj_source,
         "Scanner_behav",
@@ -90,3 +95,72 @@ def fixt_behavior(fixt_setup):
     )
 
     yield obj_beh
+
+
+@pytest.fixture(scope="session")
+def fixt_dcm2nii(fixt_setup):
+    """Yield resources for testing dcm2niix."""
+    obj_dcm2nii = SupplyVars()
+
+    # Copy some data to avoid building all niis
+    test_source = os.path.join(
+        fixt_setup.test_dir, "sourcedata", fixt_setup.subj, "DICOM"
+    )
+    if not os.path.exists(test_source):
+        os.makedirs(test_source)
+    chk_dcm = glob.glob(f"{test_source}/*dcm")
+    if not chk_dcm:
+        for cp_dir in [
+            "EmoRep_anat",
+            f"EmoRep_run{fixt_setup.runid}",
+            "Rest_run01",
+            "Field_Map_PA",
+        ]:
+            shutil.copytree(
+                os.path.join(fixt_setup.subj_source, "DICOM", cp_dir),
+                test_source,
+                dirs_exist_ok=True,
+            )
+
+    # Build niis
+    subj_raw = os.path.join(
+        fixt_setup.test_dir, "rawdata", fixt_setup.subj, fixt_setup.sess
+    )
+    if not os.path.exists(subj_raw):
+        os.makedirs(subj_raw)
+    obj_dcm2nii.raw_nii, obj_dcm2nii.raw_json = process.dcm2niix(
+        test_source, subj_raw, fixt_setup.subjid
+    )
+    yield obj_dcm2nii
+
+
+@pytest.fixture(scope="session")
+def fixt_deface(fixt_setup):
+    obj_deface = SupplyVars()
+
+    # Get reference defaced file
+    obj_deface.ref_deface = os.path.join(
+        fixt_setup.proj_dir,
+        "derivatives/deface",
+        fixt_setup.subj,
+        fixt_setup.sess,
+        f"{fixt_setup.subj}_{fixt_setup.sess}_T1w_defaced.nii.gz",
+    )
+
+    # Deface anat file
+    ref_anat_dir = os.path.join(
+        fixt_setup.proj_dir,
+        "rawdata",
+        fixt_setup.subj,
+        fixt_setup.sess,
+        "anat",
+    )
+    t1_list = glob.glob(f"{ref_anat_dir}/*T1w.nii.gz")
+    deface_list = process.deface(
+        t1_list,
+        os.path.join(fixt_setup.test_dir, "derivatives"),
+        fixt_setup.subjid,
+        fixt_setup.sess,
+    )
+    obj_deface.tst_deface = deface_list[0]
+    yield obj_deface

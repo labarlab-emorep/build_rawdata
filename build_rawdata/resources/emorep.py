@@ -133,7 +133,7 @@ class ProcessMri:
         if not os.path.exists(self._subj_raw):
             os.makedirs(self._subj_raw)
         nii_list, json_list = process.dcm2niix(
-            self._dcm_source, self._subj_raw, self._subid, self._sess
+            self._dcm_source, self._subj_raw, self._subid
         )
         return nii_list
 

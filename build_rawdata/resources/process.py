@@ -39,7 +39,7 @@ def error_msg(msg: str, stdout: str, stderr: str):
     print(textwrap.dedent(error_message))
 
 
-def dcm2niix(subj_source, subj_raw, subid, sess):
+def dcm2niix(subj_source, subj_raw, subid):
     """Conduct dcm2niix.
 
     Convert all DICOMs existing in subj_source and write
@@ -53,8 +53,6 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
         Subject's rawdata directory
     subid : str
         Subject identifier
-    sess : str
-        BIDS-formatted session string
 
     Returns
     -------
@@ -88,7 +86,9 @@ def dcm2niix(subj_source, subj_raw, subid, sess):
             -o {subj_raw} \
             {subj_source}
     """
-    h_sp = subprocess.Popen(bash_cmd, shell=True, stdout=subprocess.PIPE)
+    h_sp = subprocess.Popen(
+        bash_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     job_out, job_err = h_sp.communicate()
     h_sp.wait()
 
@@ -116,7 +116,7 @@ def deface(t1_list, deriv_dir, subid, sess):
     ----------
     t1_list : list
         Paths to subject T1w niis in rawdata
-    deriv_dir : path
+    deriv_dir : str, os.PathLike
         Location of project derivatives directory
     subid : str
         Subject identifier
