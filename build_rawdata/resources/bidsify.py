@@ -4,6 +4,7 @@ BidsifyNii : make dcm2niix output BIDS-compliant
 bidsify_exp : generate project-level BIDS dataset description
 
 """
+
 import os
 import glob
 import shutil
@@ -57,15 +58,13 @@ class BidsifyNii:
         self._sess = sess
         self._task = task
 
-    def bids_nii(self):
-        """BIDS-organize NIfTI and JSON files.
+    def bids_nii(self) -> list:
+        """BIDS-organize NIfTI and JSON files."""
+        # Check for previous work
+        t1_list = sorted(glob.glob(f"{self._subj_raw}/anat/*T1w.nii.gz"))
+        if t1_list:
+            return t1_list
 
-        Returns
-        -------
-        list
-            paths to nii anat files
-
-        """
         # Find files for organizing
         nii_list = sorted(glob.glob(f"{self._subj_raw}/*.nii.gz"))
         json_list = sorted(glob.glob(f"{self._subj_raw}/*.json"))
@@ -112,7 +111,7 @@ class BidsifyNii:
             raise FileNotFoundError("No BIDS-organized T1w files detected.")
         return t1_list
 
-    def update_func(self):
+    def update_func(self) -> list:
         """Updated TaskName field of func JSON sidecars."""
         # Update func jsons with "TaskName" Field, account for task/rest
         print(
@@ -127,8 +126,9 @@ class BidsifyNii:
         for func_json in func_json_all:
             h_task = func_json.split("_task-")[1].split("_")[0]
             self._update_json(func_json, "TaskName", h_task)
+        return func_json_all
 
-    def update_fmap(self):
+    def update_fmap(self) -> list:
         """Updated Intended for field of fmap JSON sidecars."""
         print(
             f"\t\t\t\tUpdating fmap jsons for {self._subj}, {self._sess} ..."
@@ -172,7 +172,7 @@ class BidsifyNii:
             if map_bold_fmap:
                 for fmap_json, map_bold in zip(fmap_json_list, map_bold_fmap):
                     self._update_json(fmap_json, "IntendedFor", map_bold)
-                return
+                return fmap_json_list
 
             # Regular cases -- ensure rest is at end of list
             rest_idx = [x for x, y in enumerate(bold_list) if "task-rest" in y]
@@ -183,6 +183,7 @@ class BidsifyNii:
             map_bold_fmap.append(bold_list[4:])
             for fmap_json, map_bold in zip(fmap_json_list, map_bold_fmap):
                 self._update_json(fmap_json, "IntendedFor", map_bold)
+        return fmap_json_list
 
     def _update_json(
         self,

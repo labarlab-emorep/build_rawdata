@@ -4,6 +4,7 @@ import shutil
 import glob
 from build_rawdata.resources import behavior
 from build_rawdata.resources import process
+from build_rawdata.resources import bidsify
 
 
 class SupplyVars:
@@ -135,7 +136,40 @@ def fixt_dcm2nii(fixt_setup):
 
 
 @pytest.fixture(scope="session")
+def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
+    """Yield resources for testing BIDSifying of nii files."""
+    obj_bids = SupplyVars()
+
+    # Copy raw dc2nii output to avoid test conflicts, but only when
+    # bidsification has not yet occurred.
+    subj_raw = os.path.join(
+        fixt_setup.test_dir, "rawdata_bids", fixt_setup.subj, fixt_setup.sess
+    )
+    if not os.path.exists(subj_raw):
+        os.makedirs(subj_raw)
+    chk_file = os.path.join(
+        subj_raw, "anat", f"{fixt_setup.subj}_{fixt_setup.sess}_T1w.nii.gz"
+    )
+    if not os.path.exists(chk_file):
+        src_raw = os.path.join(
+            fixt_setup.test_dir, "rawdata", fixt_setup.subj, fixt_setup.sess
+        )
+        shutil.copytree(src_raw, subj_raw, dirs_exist_ok=True)
+
+    # Run bidsification
+    bids_nii = bidsify.BidsifyNii(
+        subj_raw, fixt_setup.subj, fixt_setup.sess, fixt_setup.task
+    )
+    obj_bids.subj_raw = subj_raw
+    obj_bids.anat_list = bids_nii.bids_nii()
+    obj_bids.func_json = bids_nii.update_func()
+    obj_bids.fmap_json = bids_nii.update_fmap()
+    yield obj_bids
+
+
+@pytest.fixture(scope="session")
 def fixt_deface(fixt_setup):
+    """Yield resources for testing process.deface."""
     obj_deface = SupplyVars()
 
     # Get reference defaced file
