@@ -160,10 +160,13 @@ def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
     bids_nii = bidsify.BidsifyNii(
         subj_raw, fixt_setup.subj, fixt_setup.sess, fixt_setup.task
     )
+
+    # Prepare and yield object
     obj_bids.subj_raw = subj_raw
     obj_bids.anat_list = bids_nii.bids_nii()
     obj_bids.func_json = bids_nii.update_func()
     obj_bids.fmap_json = bids_nii.update_fmap()
+    obj_bids.bids_nii = bids_nii
     yield obj_bids
 
 

@@ -198,7 +198,7 @@ class BidsifyNii:
         with open(bids_json, "w") as jf:
             json.dump(sidecar_dict, jf)
 
-    def _switch_name(self, dcm2niix_name: str, run: str = None) -> dict:
+    def _switch_name(self, dcm2niix_name: str, run: str = None) -> tuple:
         """Return rawdata BIDS directory and file name."""
         # Key is from dcm2niix file names, value tuple contains
         # BIDS directory and file names. Manage new fmap
