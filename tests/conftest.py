@@ -2,20 +2,41 @@ import pytest
 import os
 import shutil
 import glob
+import platform
 from build_rawdata.resources import behavior
 from build_rawdata.resources import process
 from build_rawdata.resources import bidsify
+import setup_data
 
 
-class SupplyVars:
+def _check_test_env():
+    """Raise EnvironmentError for improper testing envs."""
+    # Check for DCC
+    if "ccn-labarserv2" not in platform.uname().node:
+        raise EnvironmentError("Please execute pytest on labarserv2")
+
+    # Check for Nature env
+    msg_nat = "Please execute pytest in emorep conda env"
+    try:
+        conda_env = os.environ["CONDA_DEFAULT_ENV"]
+        if "emorep" not in conda_env:
+            raise EnvironmentError(msg_nat)
+    except KeyError:
+        raise EnvironmentError(msg_nat)
+
+
+class UnitTestVars:
     pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def fixt_setup():
     """Yield setup resources."""
+    # Check for proper env
+    _check_test_env()
+
     # Start object for yielding
-    obj_setup = SupplyVars()
+    obj_setup = UnitTestVars()
 
     # Hardcode variables for specific testing
     obj_setup.subjid = "ER0009"
@@ -53,12 +74,23 @@ def fixt_setup():
 @pytest.fixture(scope="session")
 def fixt_behavior(fixt_setup):
     """Yield resources for testing behavior module."""
-    obj_beh = SupplyVars()
-    task_path = os.path.join(
-        fixt_setup.subj_source,
+    obj_beh = UnitTestVars()
+
+    # Get sourcedata behavior files
+    test_source = os.path.join(
+        fixt_setup.test_dir,
+        "sourcedata",
+        fixt_setup.subjid,
+        f"{fixt_setup.sessid}_{fixt_setup.taskid}",
         "Scanner_behav",
-        f"emorep_scannertextData_{fixt_setup.subjid}_"
-        + f"ses{fixt_setup.sessid}_run1_04282022.csv",
+    )
+    if not os.path.exists(test_source):
+        os.makedirs(test_source)
+    task_path, rate_path = setup_data.get_behav(
+        fixt_setup.subjid,
+        fixt_setup.sessid,
+        os.path.join(fixt_setup.subj_source, "Scanner_behav"),
+        test_source,
     )
 
     # Start obj for making events TSV
@@ -84,12 +116,6 @@ def fixt_behavior(fixt_setup):
     )
 
     # Get output from rest_ratings
-    rate_path = os.path.join(
-        fixt_setup.subj_source,
-        "Scanner_behav",
-        f"emorep_RestRatingData_{fixt_setup.subj}_"
-        + f"{fixt_setup.sess}_04282022.csv",
-    )
     out_file = os.path.join(subj_raw, "tst_rest_ratings.tsv")
     obj_beh.df_rest = behavior.rest_ratings(
         rate_path, fixt_setup.subjid, fixt_setup.sess, out_file
@@ -101,27 +127,24 @@ def fixt_behavior(fixt_setup):
 @pytest.fixture(scope="session")
 def fixt_dcm2nii(fixt_setup):
     """Yield resources for testing dcm2niix."""
-    obj_dcm2nii = SupplyVars()
+    obj_dcm2nii = UnitTestVars()
 
     # Copy some data to avoid building all niis
     test_source = os.path.join(
-        fixt_setup.test_dir, "sourcedata", fixt_setup.subj, "DICOM"
+        fixt_setup.test_dir,
+        "sourcedata",
+        fixt_setup.subjid,
+        f"{fixt_setup.sessid}_{fixt_setup.taskid}",
+        "DICOM",
+        "20220429.ER0009.ER0009",
     )
     if not os.path.exists(test_source):
         os.makedirs(test_source)
-    chk_dcm = glob.glob(f"{test_source}/*dcm")
-    if not chk_dcm:
-        for cp_dir in [
-            "EmoRep_anat",
-            f"EmoRep_run{fixt_setup.runid}",
-            "Rest_run01",
-            "Field_Map_PA",
-        ]:
-            shutil.copytree(
-                os.path.join(fixt_setup.subj_source, "DICOM", cp_dir),
-                test_source,
-                dirs_exist_ok=True,
-            )
+    setup_data.get_dicoms(
+        fixt_setup.runid,
+        os.path.join(fixt_setup.subj_source, "DICOM"),
+        test_source,
+    )
 
     # Build niis
     subj_raw = os.path.join(
@@ -130,7 +153,7 @@ def fixt_dcm2nii(fixt_setup):
     if not os.path.exists(subj_raw):
         os.makedirs(subj_raw)
     obj_dcm2nii.raw_nii, obj_dcm2nii.raw_json = process.dcm2niix(
-        test_source, subj_raw, fixt_setup.subjid
+        os.path.dirname(test_source), subj_raw, fixt_setup.subjid
     )
     yield obj_dcm2nii
 
@@ -138,7 +161,7 @@ def fixt_dcm2nii(fixt_setup):
 @pytest.fixture(scope="session")
 def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
     """Yield resources for testing BIDSifying of nii files."""
-    obj_bids = SupplyVars()
+    obj_bids = UnitTestVars()
 
     # Copy raw dc2nii output to avoid test conflicts, but only when
     # bidsification has not yet occurred.
@@ -173,7 +196,7 @@ def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
 @pytest.fixture(scope="session")
 def fixt_deface(fixt_setup):
     """Yield resources for testing process.deface."""
-    obj_deface = SupplyVars()
+    obj_deface = UnitTestVars()
 
     # Get reference defaced file
     obj_deface.ref_deface = os.path.join(
