@@ -1,26 +1,73 @@
 import pytest
+import os
+import glob
 
 
-@pytest.mark.integ
-def test_ProcessMri(fixt_emorep_mri):
-    # print(fixt_emorep_mri.cont_pipe)
-    # print(fixt_emorep_mri.anat_list)
-    # print(fixt_emorep_mri.deface_path)
+@pytest.mark.integ_emorep
+def test_ProcessMri_dcm_org(fixt_emorep_setup, fixt_emorep_mri):
+    for chk_dir in [
+        "EmoRep_anat",
+        "EmoRep_run01",
+        "Field_Map_PA",
+        "Rest_run01",
+    ]:
+        assert os.path.exists(
+            os.path.join(fixt_emorep_setup.dcm_path, chk_dir)
+        )
+    srch_path = os.path.join(
+        fixt_emorep_setup.dcm_path, "20220429.ER0009.ER0009"
+    )
+    found_dcm = glob.glob(f"{srch_path}/*dcm")
+    assert not found_dcm
 
+
+@pytest.mark.integ_emorep
+def test_ProcessMri_file_lists(fixt_emorep_mri):
     assert 4 == len(fixt_emorep_mri.cont_pipe)
     assert 1 == len(fixt_emorep_mri.anat_list)
+    assert 1 == len(fixt_emorep_mri.deface_path)
 
 
-@pytest.mark.integ
-def test_ProcessBeh():
-    pass
+@pytest.mark.integ_emorep
+def test_ProcessMri_bidsify(fixt_emorep_mri):
+    chk_dcm_file = fixt_emorep_mri.cont_pipe[0]
+    assert "DICOM" == os.path.basename(chk_dcm_file).split("_")[0]
+    assert not os.path.exists(chk_dcm_file)
+    chk_bids_file = fixt_emorep_mri.anat_list[0]
+    assert os.path.exists(chk_bids_file)
 
 
-@pytest.mark.integ
+@pytest.mark.integ_emorep
+def test_ProcessMri_deface(fixt_setup, fixt_emorep_mri):
+    print(fixt_emorep_mri.deface_path)
+    path_part = fixt_emorep_mri.deface_path[0].split("derivatives/")[1]
+    deriv_dir, subj, sess, file_name = path_part.split("/")
+    assert "deface" == deriv_dir
+    assert subj == fixt_setup.subj
+    assert sess == fixt_setup.sess
+
+    subj, sess, data_id, suff = file_name.split("_")
+    assert subj == fixt_setup.subj
+    assert sess == fixt_setup.sess
+    assert "T1w" == data_id
+    assert "defaced" == suff.split(".")[0]
+
+
+@pytest.mark.integ_emorep
+def test_ProcessBeh_bidsify(fixt_setup, fixt_emorep_beh):
+    assert "func" == os.path.basename(
+        os.path.dirname(fixt_emorep_beh.tsv_path)
+    )
+    assert "func" == os.path.basename(
+        os.path.dirname(fixt_emorep_beh.json_path)
+    )
+
+
+@pytest.mark.integ_emorep
 def test_ProcessRate():
     pass
 
 
-@pytest.mark.integ
+@pytest.mark.integ_emorep
 def test_ProcessPhys():
     pass

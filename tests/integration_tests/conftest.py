@@ -2,6 +2,7 @@ import pytest
 import os
 import sys
 import platform
+import shutil
 from build_rawdata.resources import emorep
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -76,7 +77,7 @@ def fixt_emorep_setup(fixt_setup):
     if not os.path.exists(raw_path):
         os.makedirs(raw_path)
 
-    #
+    # Build and yield obj
     supp_setup = IntegTestVars()
     supp_setup.raw_path = raw_path
     supp_setup.task_path = task_path
@@ -85,20 +86,47 @@ def fixt_emorep_setup(fixt_setup):
     supp_setup.dcm_path = os.path.dirname(map_src_dst["mri"][1])
 
     yield supp_setup
+    shutil.rmtree(raw_path)
 
 
 @pytest.fixture(scope="session")
 def fixt_emorep_mri(fixt_setup, fixt_emorep_setup):
-    #
+    # Run emorep MRI methods
     proc_mri = emorep.ProcessMri(fixt_setup.subjid, fixt_emorep_setup.raw_path)
     cont_pipe, anat_list = proc_mri.bids_nii(fixt_emorep_setup.dcm_path)
     deface_path = proc_mri.deface_anat(
         os.path.join(fixt_setup.test_dir, "derivatives")
     )
 
+    # Build and yield obj
     supp_mri = IntegTestVars()
     supp_mri.cont_pipe = cont_pipe
     supp_mri.anat_list = anat_list
     supp_mri.deface_path = deface_path
-
     yield supp_mri
+
+
+@pytest.fixture(scope="session")
+def fixt_emorep_beh(fixt_setup, fixt_emorep_setup):
+    # Run emorep behavior methods
+    proc_beh = emorep.ProcessBeh(fixt_setup.subjid, fixt_emorep_setup.raw_path)
+    tsv_path, json_path = proc_beh.make_events(fixt_emorep_setup.task_path)
+
+    # Build and yield obj
+    supp_beh = IntegTestVars()
+    supp_beh.tsv_path = tsv_path
+    supp_beh.json_path = json_path
+    yield supp_beh
+
+
+# @pytest.fixture(scope="session")
+# def fixt_emorep_rest(fixt_setup, fixt_emorep_setup):
+#     # Run emorep behavior methods
+#     proc_rest = emorep.ProcessRate(
+#         fixt_setup.subjid, fixt_emorep_setup.raw_path
+#     )
+
+#     # Build and yield obj
+#     supp_rest = IntegTestVars()
+
+#     yield supp_rest

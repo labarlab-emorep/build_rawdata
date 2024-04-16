@@ -28,11 +28,11 @@ def get_dicoms(
         "Rest_run01",
         "Field_Map_PA",
     ]:
-        shutil.copytree(
-            os.path.join(src, cp_dir),
-            dst,
-            dirs_exist_ok=True,
-        )
+        # Check for existing BIDS organization
+        test_src = os.path.join(src, cp_dir)
+        if os.path.exists(test_src):
+            continue
+        shutil.copytree(test_src, dst, dirs_exist_ok=True)
 
 
 def get_behav(

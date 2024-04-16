@@ -165,7 +165,7 @@ class ProcessMri:
 
         Returns
         -------
-        str, os.PathLike
+        list
             Location of defaced output
 
         """
@@ -199,13 +199,15 @@ class ProcessBeh:
 
     Methods
     -------
-    make_events(task_path)
-        Generate events sidecar from task csv
+    make_events()
+        Generate events sidecars from task csv
 
     Example
     -------
-    pb = ProcessBeh("ER0009", "/path/to/rawdata")
-    pb.make_events("/path/to/sourcedata/ER0009/run01.csv")
+    proc_beh = ProcessBeh("ER0009", "/path/to/rawdata")
+    beh_tsv, beh_json = proc_beh.make_events(
+        "/path/to/sourcedata/ER0009/run01.csv"
+    )
 
     """
 
@@ -273,6 +275,12 @@ class ProcessBeh:
         task_path : str, os.PathLike
             Location of sourcedata task file
 
+        Returns
+        -------
+        tuple
+            [0] = Path to events.tsv
+            [1] = Path to events.json
+
         """
         self._task_path = task_path
         if not self._validate():
@@ -294,17 +302,19 @@ class ProcessBeh:
         subj_raw = os.path.join(self._raw_path, f"{self._subj}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        out_file = os.path.join(
+        out_tsv = os.path.join(
             subj_raw, f"{self._subj}_{sess}_{task}_{run}_events.tsv"
         )
-        if not os.path.exists(out_file):
+        out_json = out_tsv.replace("tsv", "json")
+        if not os.path.exists(out_tsv):
             print(
                 "\t\tMaking behavior events.tsv for "
                 + f"{self._subj}, {sess} {run}"
             )
-            _, _ = behavior.events_tsv(
+            out_tsv, out_json = behavior.events_tsv(
                 task_path, subj_raw, self._subid, sess, task, run
             )
+        return (out_tsv, out_json)
 
 
 # %%
@@ -325,8 +335,8 @@ class ProcessRate:
 
     Example
     -------
-    pr = ProcessRate("ER0009", "/path/to/rawdata")
-    pr.make_rate("/path/to/sourcedata/ER0009/rest.csv")
+    proc_rest = ProcessRate("ER0009", "/path/to/rawdata")
+    proc_rest.make_rate("/path/to/sourcedata/ER0009/rest.csv")
 
     """
 
@@ -370,7 +380,7 @@ class ProcessRate:
             return False
         return True
 
-    def make_rate(self, rate_path: Union[str, os.PathLike]):
+    def make_rate(self, rate_path):
         """Generate rest ratings beh files.
 
         Parameters

@@ -158,7 +158,7 @@ class BuildEmoRep:
         beh_list = [x for x in beh_list if "Rest" not in x]
         mk_beh = emorep.ProcessBeh(self._subid, self._raw_path)
         for task_path in beh_list:
-            mk_beh.make_events(task_path)
+            _, _ = mk_beh.make_events(task_path)
 
     def convert_rate(self):
         """Trigger conversion of post-rest endorsement ratings."""

@@ -84,7 +84,7 @@ def main():
 
     # Integration tests
     if args.integ_emorep:
-        _submit_pytest(pytest_opts=["-m integ"])
+        _submit_pytest(pytest_opts=["-m integ_emorep"])
 
 
 if __name__ == "__main__":
