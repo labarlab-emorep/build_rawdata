@@ -330,13 +330,15 @@ class ProcessRate:
 
     Methods
     -------
-    make_rate(rate_path)
+    make_rate()
         Organize post resting responses into rawdata beh
 
     Example
     -------
     proc_rest = ProcessRate("ER0009", "/path/to/rawdata")
-    proc_rest.make_rate("/path/to/sourcedata/ER0009/rest.csv")
+    df, file_path = proc_rest.make_rate(
+        "/path/to/sourcedata/ER0009/rest.csv"
+    )
 
     """
 
@@ -388,6 +390,12 @@ class ProcessRate:
         rate_path : str, os.PathLike
             Location of sourcedata rest ratings csv
 
+        Returns
+        -------
+        tuple
+            [0] = pd.DataFrame
+            [1] = Location of file
+
         """
         self._rate_path = rate_path
         if not self._validate():
@@ -415,7 +423,7 @@ class ProcessRate:
 
         # Make rawdata file
         print("\t\tMaking rest ratings.tsv for " + f"{self._subj}, {sess} ...")
-        _ = behavior.rest_ratings(rate_path, self._subid, sess, out_file)
+        return behavior.rest_ratings(rate_path, self._subid, sess, out_file)
 
 
 # %%
@@ -434,13 +442,13 @@ class ProcessPhys:
 
     Methods
     -------
-    make_physio(phys_path)
+    make_physio()
         Copy acq and generate txt
 
     Example
     -------
-    pp = ProcessPhys("ER0009", "/path/to/rawdata")
-    pb.make_physio("/path/to/sourcedata/ER0009/phys.acq")
+    proc_phys = ProcessPhys("ER0009", "/path/to/rawdata")
+    proc_phys.make_physio("/path/to/sourcedata/ER0009/phys.acq")
 
     """
 
@@ -493,6 +501,11 @@ class ProcessPhys:
         phys_path : str, os.PathLike
             Location of sourcedata physio file
 
+        Returns
+        -------
+        str, os.PathLike
+            Location of output physio file
+
         """
         self._phys_path = phys_path
         if not self._validate():
@@ -526,7 +539,7 @@ class ProcessPhys:
 
         # Generate tsv dataframe and copy data
         if os.path.exists(dest_acq):
-            return
+            return dest_acq
         print(
             "\t\tProcessing physio files for "
             + f"sub-{self._subid}, {sess} {run} {task}"
@@ -542,6 +555,7 @@ class ProcessPhys:
             )
             shutil.copy(phys_path, dest_orig)
             os.rename(dest_orig, dest_acq)
+            return dest_acq
         except:  # noqa: E722, nk throws the stupid struct.error
             "\t\t\tInsufficient data, continuing ..."
             return

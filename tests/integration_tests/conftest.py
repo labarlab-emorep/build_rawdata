@@ -3,6 +3,7 @@ import os
 import sys
 import platform
 import shutil
+import pandas as pd
 from build_rawdata.resources import emorep
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -119,14 +120,31 @@ def fixt_emorep_beh(fixt_setup, fixt_emorep_setup):
     yield supp_beh
 
 
-# @pytest.fixture(scope="session")
-# def fixt_emorep_rest(fixt_setup, fixt_emorep_setup):
-#     # Run emorep behavior methods
-#     proc_rest = emorep.ProcessRate(
-#         fixt_setup.subjid, fixt_emorep_setup.raw_path
-#     )
+@pytest.fixture(scope="session")
+def fixt_emorep_rest(fixt_setup, fixt_emorep_setup):
+    # Run emorep rest behavior methods
+    proc_rest = emorep.ProcessRate(
+        fixt_setup.subjid, fixt_emorep_setup.raw_path
+    )
+    _, rest_path = proc_rest.make_rate(fixt_emorep_setup.rate_path)
 
-#     # Build and yield obj
-#     supp_rest = IntegTestVars()
+    # Build and yield obj
+    supp_rest = IntegTestVars()
+    supp_rest.rest_path = rest_path
+    yield supp_rest
 
-#     yield supp_rest
+
+@pytest.fixture(scope="session")
+def fixt_emorep_phys(fixt_setup, fixt_emorep_setup):
+    # Run emorep rest behavior methods
+    proc_phys = emorep.ProcessPhys(
+        fixt_setup.subjid, fixt_emorep_setup.raw_path
+    )
+    phys_path = proc_phys.make_physio(fixt_emorep_setup.phys_path)
+    df = pd.read_csv(phys_path.replace(".acq", ".txt"), sep="\t", header=None)
+
+    # Build and yield obj
+    supp_phys = IntegTestVars()
+    supp_phys.phys_path = phys_path
+    supp_phys.df = df
+    yield supp_phys

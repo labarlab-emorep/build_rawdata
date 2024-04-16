@@ -117,7 +117,7 @@ def fixt_behavior(fixt_setup):
 
     # Get output from rest_ratings
     out_file = os.path.join(subj_raw, "tst_rest_ratings.tsv")
-    obj_beh.df_rest = behavior.rest_ratings(
+    obj_beh.df_rest, _ = behavior.rest_ratings(
         rate_path, fixt_setup.subjid, fixt_setup.sess, out_file
     )
 

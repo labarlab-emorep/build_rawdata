@@ -184,7 +184,7 @@ class BuildEmoRep:
         # Convert all rest ratings
         mk_rate = emorep.ProcessRate(self._subid, self._raw_path)
         for rate_path in rate_list:
-            mk_rate.make_rate(rate_path)
+            _ = mk_rate.make_rate(rate_path)
 
     def convert_phys(self):
         """Trigger conversion of physiology data."""
@@ -211,7 +211,7 @@ class BuildEmoRep:
             return
         mk_phys = emorep.ProcessPhys(self._subid, self._raw_path)
         for phys_path in phys_list:
-            mk_phys.make_physio(phys_path)
+            _ = mk_phys.make_physio(phys_path)
 
 
 # %%

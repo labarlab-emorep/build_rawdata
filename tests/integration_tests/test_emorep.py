@@ -39,7 +39,6 @@ def test_ProcessMri_bidsify(fixt_emorep_mri):
 
 @pytest.mark.integ_emorep
 def test_ProcessMri_deface(fixt_setup, fixt_emorep_mri):
-    print(fixt_emorep_mri.deface_path)
     path_part = fixt_emorep_mri.deface_path[0].split("derivatives/")[1]
     deriv_dir, subj, sess, file_name = path_part.split("/")
     assert "deface" == deriv_dir
@@ -64,10 +63,41 @@ def test_ProcessBeh_bidsify(fixt_setup, fixt_emorep_beh):
 
 
 @pytest.mark.integ_emorep
-def test_ProcessRate():
-    pass
+def test_ProcessRate(fixt_setup, fixt_emorep_rest):
+    path_part = fixt_emorep_rest.rest_path.split("rawdata_integ/")[1]
+    subj, sess, data_type, file_name = path_part.split("/")
+    assert "beh" == data_type
+    assert subj == fixt_setup.subj
+    assert sess == fixt_setup.sess
+
+    subj, sess, task, suff = file_name.split("_")
+    assert subj == fixt_setup.subj
+    assert sess == fixt_setup.sess
+    assert "rest-ratings" == task
+    assert "2022-04-28" == suff.split(".")[0]
 
 
 @pytest.mark.integ_emorep
-def test_ProcessPhys():
-    pass
+def test_ProcessPhys_data(fixt_setup, fixt_emorep_phys):
+    assert 0.012512 == fixt_emorep_phys.df.at[0, 0]
+    assert -0.28717 == fixt_emorep_phys.df.at[0, 1]
+    assert 0.337219 == fixt_emorep_phys.df.at[0, 2]
+    assert 5.0 == fixt_emorep_phys.df.at[0, 3]
+    assert 255.0 == fixt_emorep_phys.df.at[0, 11]
+    assert -0.28717 == fixt_emorep_phys.df.at[0, 12]
+
+
+@pytest.mark.integ_emorep
+def test_ProcessPhys_bidsify(fixt_setup, fixt_emorep_phys):
+    path_part = fixt_emorep_phys.phys_path.split("rawdata_integ/")[1]
+    subj, sess, data_type, file_name = path_part.split("/")
+    assert "phys" == data_type
+    assert subj == fixt_setup.subj
+    assert sess == fixt_setup.sess
+
+    subj, sess, task, run, rec, suff = file_name.split("_")
+    assert subj == fixt_setup.subj
+    assert sess == fixt_setup.sess
+    assert task == fixt_setup.task
+    assert "recording-biopack" == rec
+    assert "physio" == suff.split(".")[0]
