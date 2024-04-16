@@ -11,7 +11,7 @@ import setup_data
 
 def _check_test_env():
     """Raise EnvironmentError for improper testing envs."""
-    # Check for DCC
+    # Check for labarserv2
     if "ccn-labarserv2" not in platform.uname().node:
         raise EnvironmentError("Please execute pytest on labarserv2")
 

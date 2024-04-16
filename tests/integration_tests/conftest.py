@@ -1,9 +1,27 @@
 import pytest
 import os
 import sys
+import platform
+from build_rawdata.resources import emorep
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import setup_data  # noqa: E402
+
+
+def _check_test_env():
+    """Raise EnvironmentError for improper testing envs."""
+    # Check for labarserv2
+    if "ccn-labarserv2" not in platform.uname().node:
+        raise EnvironmentError("Please execute pytest on labarserv2")
+
+    # Check for Nature env
+    msg_nat = "Please execute pytest in emorep conda env"
+    try:
+        conda_env = os.environ["CONDA_DEFAULT_ENV"]
+        if "emorep" not in conda_env:
+            raise EnvironmentError(msg_nat)
+    except KeyError:
+        raise EnvironmentError(msg_nat)
 
 
 class IntegTestVars:
@@ -11,7 +29,9 @@ class IntegTestVars:
 
 
 @pytest.fixture(scope="session")
-def fixt_emorep(fixt_setup):
+def fixt_emorep_setup(fixt_setup):
+    _check_test_env()
+
     # Make testing sourcedata dirs
     map_src_dst = {}
     map_name_data = {
@@ -44,3 +64,41 @@ def fixt_emorep(fixt_setup):
         os.path.dirname(map_src_dst["mri"][0]),
         map_src_dst["mri"][1],
     )
+    phys_path = setup_data.get_phys(
+        fixt_setup.subjid,
+        fixt_setup.sessid,
+        map_src_dst["phys"][0],
+        map_src_dst["phys"][1],
+    )
+
+    #
+    raw_path = os.path.join(fixt_setup.test_dir, "rawdata_integ")
+    if not os.path.exists(raw_path):
+        os.makedirs(raw_path)
+
+    #
+    supp_setup = IntegTestVars()
+    supp_setup.raw_path = raw_path
+    supp_setup.task_path = task_path
+    supp_setup.rate_path = rate_path
+    supp_setup.phys_path = phys_path
+    supp_setup.dcm_path = os.path.dirname(map_src_dst["mri"][1])
+
+    yield supp_setup
+
+
+@pytest.fixture(scope="session")
+def fixt_emorep_mri(fixt_setup, fixt_emorep_setup):
+    #
+    proc_mri = emorep.ProcessMri(fixt_setup.subjid, fixt_emorep_setup.raw_path)
+    cont_pipe, anat_list = proc_mri.bids_nii(fixt_emorep_setup.dcm_path)
+    deface_path = proc_mri.deface_anat(
+        os.path.join(fixt_setup.test_dir, "derivatives")
+    )
+
+    supp_mri = IntegTestVars()
+    supp_mri.cont_pipe = cont_pipe
+    supp_mri.anat_list = anat_list
+    supp_mri.deface_path = deface_path
+
+    yield supp_mri

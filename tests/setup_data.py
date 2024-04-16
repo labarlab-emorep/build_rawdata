@@ -1,5 +1,6 @@
 """Methods for finding, organizing data needed for testing.
 
+get_behav : Copy run-01 behavior/rest files for testing
 get_dicoms : Copy select DICOMs to testing location
 
 """
@@ -63,3 +64,23 @@ def get_behav(
         shutil.copy2(cp_file, dst)
         out_list.append(out_path)
     return out_list
+
+
+def get_phys(
+    subjid: str,
+    sessid: str,
+    src: Union[str, os.PathLike],
+    dst: Union[str, os.PathLike],
+) -> Union[str, os.PathLike]:
+    """Copy run1 physio sourcedata behavior files to test location."""
+    if not os.path.basename(src) == "Scanner_physio":
+        raise ValueError(
+            "Expected 'src' parameter : path to 'Scanner_physio' dir"
+        )
+
+    task_path = os.path.join(
+        src,
+        f"{subjid}_{sessid}_physio_run1.acq",
+    )
+    shutil.copy2(task_path, dst)
+    return os.path.join(dst, os.path.basename(task_path))

@@ -137,7 +137,7 @@ class BuildEmoRep:
         for dcm_source in dcm_list:
             cont_pipe, _ = mk_mri.bids_nii(dcm_source)
             if self._do_deface and cont_pipe:
-                mk_mri.deface_anat(self._deriv_dir)
+                _ = mk_mri.deface_anat(self._deriv_dir)
 
     def convert_beh(self):
         """Trigger conversion of behavioral data."""

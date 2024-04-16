@@ -43,9 +43,11 @@ class ProcessMri:
 
     Example
     -------
-    pm = ProcessMri("ER0009", "/path/to/rawdata")
-    pm.bids_nii("/path/to/ER0009/day2_movies/DICOM")
-    pm.deface_anat("/path/to/derivatives")
+    proc_mri = ProcessMri("ER0009", "/path/to/rawdata")
+    cont_pipe, anat_list = proc_mri.bids_nii(
+        "/path/to/ER0009/day2_movies/DICOM"
+    )
+    deface_path = proc_mri.deface_anat("/path/to/derivatives")
 
     """
 
@@ -161,6 +163,11 @@ class ProcessMri:
         deriv_dir : str, os.PathLike
             Location of derivatives directory
 
+        Returns
+        -------
+        str, os.PathLike
+            Location of defaced output
+
         """
         if not hasattr(self, "_subj_raw") or not os.path.exists(
             os.path.join(self._subj_raw, "anat")
@@ -174,7 +181,7 @@ class ProcessMri:
             raise FileNotFoundError(
                 f"No T1w files detected in {self._subj_raw}/anat"
             )
-        _ = process.deface(t1_list, deriv_dir, self._subid, self._sess)
+        return process.deface(t1_list, deriv_dir, self._subid, self._sess)
 
 
 # %%
@@ -422,7 +429,7 @@ class ProcessPhys:
 
     Example
     -------
-    pp = ProcessPhys("ER0009", "/path/to/rawdata", "/path/to/derivatives")
+    pp = ProcessPhys("ER0009", "/path/to/rawdata")
     pb.make_physio("/path/to/sourcedata/ER0009/phys.acq")
 
     """
