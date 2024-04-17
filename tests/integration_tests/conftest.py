@@ -49,10 +49,12 @@ def fixt_emorep_setup(fixt_setup):
             f"{fixt_setup.sessid}_{fixt_setup.taskid}",
             dir_name,
         )
-        ref_dir = os.path.join(fixt_setup.subj_source, dir_name)
-        map_src_dst[name] = [ref_dir, tst_dir]
         if not os.path.exists(tst_dir):
             os.makedirs(tst_dir)
+
+        # Build source-dest mapping
+        ref_dir = os.path.join(fixt_setup.subj_source, dir_name)
+        map_src_dst[name] = [ref_dir, tst_dir]
 
     # Get testing sourcedata files
     task_path, rate_path = setup_data.get_behav(
@@ -73,7 +75,7 @@ def fixt_emorep_setup(fixt_setup):
         map_src_dst["phys"][1],
     )
 
-    #
+    # Test in new rawdata to avoid breaking unit tests
     raw_path = os.path.join(fixt_setup.test_dir, "rawdata_integ")
     if not os.path.exists(raw_path):
         os.makedirs(raw_path)
@@ -87,6 +89,7 @@ def fixt_emorep_setup(fixt_setup):
     supp_setup.dcm_path = os.path.dirname(map_src_dst["mri"][1])
 
     yield supp_setup
+    return  # TODO remove
     shutil.rmtree(raw_path)
 
 

@@ -29,7 +29,7 @@ def get_dicoms(
         "Field_Map_PA",
     ]:
         # Check for existing BIDS organization
-        chk_bids = os.path.join(dst, cp_dir)
+        chk_bids = os.path.join(os.path.dirname(dst), cp_dir)
         if os.path.exists(chk_bids):
             continue
 
