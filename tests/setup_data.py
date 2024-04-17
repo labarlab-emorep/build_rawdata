@@ -21,7 +21,7 @@ def get_dicoms(
     if glob.glob(f"{dst}/*dcm"):
         return
 
-    # Copy specific directories
+    # Copy DICOMs from specific directories to reduce dcm2niix execution time
     for cp_dir in [
         "EmoRep_anat",
         f"EmoRep_run{runid}",
@@ -29,10 +29,12 @@ def get_dicoms(
         "Field_Map_PA",
     ]:
         # Check for existing BIDS organization
-        test_src = os.path.join(src, cp_dir)
-        if os.path.exists(test_src):
+        chk_bids = os.path.join(dst, cp_dir)
+        if os.path.exists(chk_bids):
             continue
-        shutil.copytree(test_src, dst, dirs_exist_ok=True)
+
+        # Copy data with flat output organization
+        shutil.copytree(os.path.join(src, cp_dir), dst, dirs_exist_ok=True)
 
 
 def get_behav(
