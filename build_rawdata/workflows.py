@@ -54,7 +54,7 @@ class BuildEmoRep:
         "/path/to/derivatives",
         True,
     )
-    build_emo.chk_sourcedata("ER0909")
+    chk_pass = build_emo.chk_sourcedata("ER0909")
     build_emo.convert_mri()
     build_emo.convert_beh()
     build_emo.convert_phys()
@@ -137,7 +137,7 @@ class BuildEmoRep:
         for dcm_source in dcm_list:
             cont_pipe, _ = mk_mri.bids_nii(dcm_source)
             if self._do_deface and cont_pipe:
-                mk_mri.deface_anat(self._deriv_dir)
+                _ = mk_mri.deface_anat(self._deriv_dir)
 
     def convert_beh(self):
         """Trigger conversion of behavioral data."""
@@ -158,7 +158,7 @@ class BuildEmoRep:
         beh_list = [x for x in beh_list if "Rest" not in x]
         mk_beh = emorep.ProcessBeh(self._subid, self._raw_path)
         for task_path in beh_list:
-            mk_beh.make_events(task_path)
+            _, _ = mk_beh.make_events(task_path)
 
     def convert_rate(self):
         """Trigger conversion of post-rest endorsement ratings."""
@@ -184,7 +184,7 @@ class BuildEmoRep:
         # Convert all rest ratings
         mk_rate = emorep.ProcessRate(self._subid, self._raw_path)
         for rate_path in rate_list:
-            mk_rate.make_rate(rate_path)
+            _ = mk_rate.make_rate(rate_path)
 
     def convert_phys(self):
         """Trigger conversion of physiology data."""
@@ -211,7 +211,7 @@ class BuildEmoRep:
             return
         mk_phys = emorep.ProcessPhys(self._subid, self._raw_path)
         for phys_path in phys_list:
-            mk_phys.make_physio(phys_path)
+            _ = mk_phys.make_physio(phys_path)
 
 
 # %%
@@ -243,6 +243,7 @@ def build_nki(
     dryrun : bool
         Test the download parameters
     hand : str
+        {"L", "R"}
         Handedness of participants
     nki_dir : str, os.PathLike
         Location of directory containing NKI files:
@@ -251,11 +252,20 @@ def build_nki(
     proj_dir : str, os.PathLike
         Parent directory of project
     prot : str
+        {"REST645", "REST1400", "RESTCAP", "RESTPCASL"}
         Scanning protocol
     scan : list
+        {"anat", "func", "dwi"}
         Scan types to download
     sess : str
+        {"BAS1", "BAS2", "BAS3"}
         Session, Visit name
+
+    Returns
+    -------
+    dict
+        Key = BIDS subject str
+        Value = List of rawdata file locations
 
     Raises
     ------
@@ -334,6 +344,7 @@ def build_nki(
             os.remove(phys_path)
 
     # Shorten IDs
+    out_dict = {}
     subj_all = [
         os.path.basename(x) for x in sorted(glob.glob(f"{raw_path}/sub-*"))
     ]
@@ -349,6 +360,13 @@ def build_nki(
         for _file in file_list:
             file_path, suff = _file.split(_long)
             os.rename(_file, f"{file_path}{_short}{suff}")
+
+            # Update output dict
+            if _short not in out_dict.keys():
+                out_dict[_short] = [f"{file_path}{_short}{suff}"]
+            else:
+                out_dict[_short].append(f"{file_path}{_short}{suff}")
+    return out_dict
 
 
 # %%
