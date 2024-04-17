@@ -393,7 +393,7 @@ class ProcessRate:
         Returns
         -------
         tuple
-            [0] = pd.DataFrame
+            [0] = pd.DataFrame, None (output already existed)
             [1] = Location of file
 
         """
@@ -419,7 +419,7 @@ class ProcessRate:
             subj_raw, f"sub-{self._subid}_{sess}_rest-ratings_{date_str}.tsv"
         )
         if os.path.exists(out_file):
-            return
+            return (None, out_file)
 
         # Make rawdata file
         print("\t\tMaking rest ratings.tsv for " + f"{self._subj}, {sess} ...")

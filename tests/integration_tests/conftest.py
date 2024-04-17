@@ -5,6 +5,7 @@ import platform
 import shutil
 import pandas as pd
 from build_rawdata.resources import emorep
+from build_rawdata import workflows
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import setup_data  # noqa: E402
@@ -151,3 +152,27 @@ def fixt_emorep_phys(fixt_setup, fixt_emorep_setup):
     supp_phys.phys_path = phys_path
     supp_phys.df = df
     yield supp_phys
+
+
+@pytest.fixture(scope="session")
+def fixt_workflow_emorep(fixt_setup, fixt_emorep_setup):
+    # Run entire build_rawdata for EmoRep
+    build_emo = workflows.BuildEmoRep(
+        os.path.join(fixt_setup.test_dir, "sourcedata"),
+        fixt_emorep_setup.raw_path,
+        os.path.join(fixt_setup.test_dir, "derivatives"),
+        True,
+    )
+    chk_pass = build_emo.chk_sourcedata(fixt_setup.subjid)
+    build_emo.convert_mri()
+    build_emo.convert_beh()
+    build_emo.convert_phys()
+    build_emo.convert_rate()
+
+    # Make and yield obj
+    supp_wf = IntegTestVars()
+    supp_wf.chk_pass = chk_pass
+    supp_wf.raw_path = fixt_emorep_setup.raw_path
+    supp_wf.source_path = os.path.join(fixt_setup.test_dir, "sourcedata")
+    supp_wf.deriv_path = os.path.join(fixt_setup.test_dir, "derivatives")
+    yield supp_wf

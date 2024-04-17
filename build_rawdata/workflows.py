@@ -54,7 +54,7 @@ class BuildEmoRep:
         "/path/to/derivatives",
         True,
     )
-    build_emo.chk_sourcedata("ER0909")
+    chk_pass = build_emo.chk_sourcedata("ER0909")
     build_emo.convert_mri()
     build_emo.convert_beh()
     build_emo.convert_phys()

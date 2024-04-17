@@ -23,18 +23,30 @@ def test_ProcessMri_dcm_org(fixt_emorep_setup, fixt_emorep_mri):
 
 @pytest.mark.integ_emorep
 def test_ProcessMri_file_lists(fixt_emorep_mri):
-    assert 4 == len(fixt_emorep_mri.cont_pipe)
-    assert 1 == len(fixt_emorep_mri.anat_list)
+    # Account for whether test was executed from integ_emorep
+    # or integ_workflow.
+    if isinstance(fixt_emorep_mri.cont_pipe, list):
+        assert 4 == len(fixt_emorep_mri.cont_pipe)
+        assert 1 == len(fixt_emorep_mri.anat_list)
+    else:
+        assert fixt_emorep_mri.cont_pipe
+        assert not fixt_emorep_mri.anat_list
     assert 1 == len(fixt_emorep_mri.deface_path)
 
 
 @pytest.mark.integ_emorep
 def test_ProcessMri_bidsify(fixt_emorep_mri):
-    chk_dcm_file = fixt_emorep_mri.cont_pipe[0]
-    assert "DICOM" == os.path.basename(chk_dcm_file).split("_")[0]
-    assert not os.path.exists(chk_dcm_file)
-    chk_bids_file = fixt_emorep_mri.anat_list[0]
-    assert os.path.exists(chk_bids_file)
+    # Account for whether test was executed from integ_emorep
+    # or integ_workflow.
+    if isinstance(fixt_emorep_mri.cont_pipe, list):
+        chk_dcm_file = fixt_emorep_mri.cont_pipe[0]
+        assert "DICOM" == os.path.basename(chk_dcm_file).split("_")[0]
+        assert not os.path.exists(chk_dcm_file)
+        chk_bids_file = fixt_emorep_mri.anat_list[0]
+        assert os.path.exists(chk_bids_file)
+    else:
+        assert fixt_emorep_mri.cont_pipe
+        assert not fixt_emorep_mri.anat_list
 
 
 @pytest.mark.integ_emorep
