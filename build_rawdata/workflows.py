@@ -243,6 +243,7 @@ def build_nki(
     dryrun : bool
         Test the download parameters
     hand : str
+        {"L", "R"}
         Handedness of participants
     nki_dir : str, os.PathLike
         Location of directory containing NKI files:
@@ -251,11 +252,20 @@ def build_nki(
     proj_dir : str, os.PathLike
         Parent directory of project
     prot : str
+        {"REST645", "REST1400", "RESTCAP", "RESTPCASL"}
         Scanning protocol
     scan : list
+        {"anat", "func", "dwi"}
         Scan types to download
     sess : str
+        {"BAS1", "BAS2", "BAS3"}
         Session, Visit name
+
+    Returns
+    -------
+    dict
+        Key = BIDS subject str
+        Value = List of rawdata file locations
 
     Raises
     ------
@@ -334,6 +344,7 @@ def build_nki(
             os.remove(phys_path)
 
     # Shorten IDs
+    out_dict = {}
     subj_all = [
         os.path.basename(x) for x in sorted(glob.glob(f"{raw_path}/sub-*"))
     ]
@@ -349,6 +360,13 @@ def build_nki(
         for _file in file_list:
             file_path, suff = _file.split(_long)
             os.rename(_file, f"{file_path}{_short}{suff}")
+
+            # Update output dict
+            if _short not in out_dict.keys():
+                out_dict[_short] = [f"{file_path}{_short}{suff}"]
+            else:
+                out_dict[_short].append(f"{file_path}{_short}{suff}")
+    return out_dict
 
 
 # %%

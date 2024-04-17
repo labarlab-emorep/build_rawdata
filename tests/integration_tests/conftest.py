@@ -155,7 +155,7 @@ def fixt_emorep_phys(fixt_setup, fixt_emorep_setup):
 
 
 @pytest.fixture(scope="session")
-def fixt_workflow_emorep(fixt_setup, fixt_emorep_setup):
+def fixt_wf_emorep(fixt_setup, fixt_emorep_setup):
     # Run entire build_rawdata for EmoRep
     build_emo = workflows.BuildEmoRep(
         os.path.join(fixt_setup.test_dir, "sourcedata"),
@@ -176,3 +176,31 @@ def fixt_workflow_emorep(fixt_setup, fixt_emorep_setup):
     supp_wf.source_path = os.path.join(fixt_setup.test_dir, "sourcedata")
     supp_wf.deriv_path = os.path.join(fixt_setup.test_dir, "derivatives")
     yield supp_wf
+
+
+@pytest.fixture(scope="session")
+def fixt_wf_nki():
+    # Hardcode variables for known output
+    age = 79
+    dryrun = False
+    hand = "L"
+    nki_dir = (
+        "/mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival"
+        + "/code/nki_resources"
+    )
+    proj_dir = (
+        "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
+        + "/code/unit_test/build_rawdata"
+    )
+    prot = "REST645"
+    scan = ["anat", "func"]
+    sess = "BAS1"
+
+    # Make yield obj, add attrs
+    supp_nki = IntegTestVars()
+    supp_nki.raw_dict = workflows.build_nki(
+        age, dryrun, hand, nki_dir, proj_dir, prot, scan, sess
+    )
+    supp_nki.raw_path = os.path.join(proj_dir, "data_mri_BIDS", "rawdata")
+    yield supp_nki
+    shutil.rmtree(os.path.dirname(supp_nki.raw_path))

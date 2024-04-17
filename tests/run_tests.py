@@ -23,6 +23,21 @@ def get_args():
         description=ver_info + __doc__, formatter_class=RawTextHelpFormatter
     )
     parser.add_argument(
+        "--integ-emorep",
+        action="store_true",
+        help="Conduct marked itegration tests of emorep",
+    )
+    parser.add_argument(
+        "--integ-wf-emorep",
+        action="store_true",
+        help="Conduct marked itegration tests of emorep workflow",
+    )
+    parser.add_argument(
+        "--integ-wf-nki",
+        action="store_true",
+        help="Conduct marked itegration tests of NKI workflow",
+    )
+    parser.add_argument(
         "--unit-all",
         action="store_true",
         help="Conduct all unit tests",
@@ -41,11 +56,6 @@ def get_args():
         "--unit-no-mark",
         action="store_true",
         help="Conduct un-marked unit test",
-    )
-    parser.add_argument(
-        "--integ-emorep",
-        action="store_true",
-        help="Conduct marked itegration tests of emorep",
     )
 
     if len(sys.argv) <= 1:
@@ -85,6 +95,10 @@ def main():
     # Integration tests
     if args.integ_emorep:
         _submit_pytest(pytest_opts=["-m integ_emorep"])
+    if args.integ_wf_emorep:
+        _submit_pytest(pytest_opts=["-m integ_wf_emorep"])
+    if args.integ_wf_nki:
+        _submit_pytest(pytest_opts=["-m integ_wf_nki"])
 
 
 if __name__ == "__main__":
