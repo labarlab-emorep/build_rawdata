@@ -1,9 +1,12 @@
 """Conduct user-requested unit and integration tests.
 
+Tests are conducted in
+/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/code/unit_test/build_rawdata
+which is removed if all requested tests pass.
+
 Examples
 --------
-python run_tests.py --unit-all
-python run_tests.py --unit-no-mark
+python run_tests.py --all
 python run_tests.py --unit-dcm-bids --unit-deface
 python run_tests.py --integ-emorep
 
@@ -23,6 +26,11 @@ def get_args():
         description=ver_info + __doc__, formatter_class=RawTextHelpFormatter
     )
     parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Conduct all unit and integration tests",
+    )
+    parser.add_argument(
         "--integ-emorep",
         action="store_true",
         help="Conduct marked itegration tests of emorep",
@@ -36,11 +44,6 @@ def get_args():
         "--integ-wf-nki",
         action="store_true",
         help="Conduct marked itegration tests of NKI workflow",
-    )
-    parser.add_argument(
-        "--unit-all",
-        action="store_true",
-        help="Conduct all unit tests",
     )
     parser.add_argument(
         "--unit-dcm-bids",
@@ -81,11 +84,20 @@ def main():
     args = get_args().parse_args()
 
     # Unit tests
-    if args.unit_all:
+    if args.all:
         _submit_pytest()
     if args.unit_no_mark:
         _submit_pytest(
-            pytest_opts=["-m 'not dcm_bids and not deface and not integ'"]
+            pytest_opts=[
+                "-m ",
+                "'",
+                "not dcm_bids",
+                "and not deface",
+                "and not integ_emorep",
+                "and not integ_wf_emorep",
+                "and not integ_wf_nki",
+                "'",
+            ]
         )
     if args.unit_dcm_bids:
         _submit_pytest(pytest_opts=["-m dcm_bids"])

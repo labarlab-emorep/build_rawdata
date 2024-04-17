@@ -2,27 +2,10 @@ import pytest
 import os
 import shutil
 import glob
-import platform
 from build_rawdata.resources import behavior
 from build_rawdata.resources import process
 from build_rawdata.resources import bidsify
 import setup_data
-
-
-def _check_test_env():
-    """Raise EnvironmentError for improper testing envs."""
-    # Check for labarserv2
-    if "ccn-labarserv2" not in platform.uname().node:
-        raise EnvironmentError("Please execute pytest on labarserv2")
-
-    # Check for Nature env
-    msg_nat = "Please execute pytest in emorep conda env"
-    try:
-        conda_env = os.environ["CONDA_DEFAULT_ENV"]
-        if "emorep" not in conda_env:
-            raise EnvironmentError(msg_nat)
-    except KeyError:
-        raise EnvironmentError(msg_nat)
 
 
 class UnitTestVars:
@@ -33,7 +16,7 @@ class UnitTestVars:
 def fixt_setup():
     """Yield setup resources."""
     # Check for proper env
-    _check_test_env()
+    setup_data.check_test_env()
 
     # Start object for yielding
     obj_setup = UnitTestVars()
@@ -49,9 +32,9 @@ def fixt_setup():
     obj_setup.run = "run-" + obj_setup.runid
 
     # Setup paths
-    par_dir = "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
+    par_dir = setup_data.par_dir()
     obj_setup.proj_dir = os.path.join(par_dir, "data_scanner_BIDS")
-    obj_setup.test_dir = os.path.join(par_dir, "code/unit_test/build_rawdata")
+    obj_setup.test_dir = setup_data.test_dir()
     obj_setup.subj_source = os.path.join(
         obj_setup.proj_dir,
         "sourcedata",
@@ -65,13 +48,16 @@ def fixt_setup():
         if not os.path.exists(mk_dir):
             os.makedirs(mk_dir)
 
-    # Yield and teardown
     yield obj_setup
-    return  # TODO remove
-    shutil.rmtree(obj_setup.test_dir)
 
 
-@pytest.fixture(scope="session")
+def pytest_sessionfinish(session, exitstatus):
+    """Teardown if all tests passed."""
+    if 0 == exitstatus:
+        shutil.rmtree(setup_data.test_dir())
+
+
+@pytest.fixture(scope="module")
 def fixt_behavior(fixt_setup):
     """Yield resources for testing behavior module."""
     obj_beh = UnitTestVars()
@@ -124,7 +110,7 @@ def fixt_behavior(fixt_setup):
     yield obj_beh
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def fixt_dcm2nii(fixt_setup):
     """Yield resources for testing dcm2niix."""
     obj_dcm2nii = UnitTestVars()
@@ -158,7 +144,7 @@ def fixt_dcm2nii(fixt_setup):
     yield obj_dcm2nii
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
     """Yield resources for testing BIDSifying of nii files."""
     obj_bids = UnitTestVars()
@@ -193,7 +179,7 @@ def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
     yield obj_bids
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def fixt_deface(fixt_setup):
     """Yield resources for testing process.deface."""
     obj_deface = UnitTestVars()

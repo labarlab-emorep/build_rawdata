@@ -1,8 +1,6 @@
 import pytest
 import os
 import sys
-import platform
-import shutil
 import pandas as pd
 from build_rawdata.resources import emorep
 from build_rawdata import workflows
@@ -11,29 +9,12 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import setup_data  # noqa: E402
 
 
-def _check_test_env():
-    """Raise EnvironmentError for improper testing envs."""
-    # Check for labarserv2
-    if "ccn-labarserv2" not in platform.uname().node:
-        raise EnvironmentError("Please execute pytest on labarserv2")
-
-    # Check for Nature env
-    msg_nat = "Please execute pytest in emorep conda env"
-    try:
-        conda_env = os.environ["CONDA_DEFAULT_ENV"]
-        if "emorep" not in conda_env:
-            raise EnvironmentError(msg_nat)
-    except KeyError:
-        raise EnvironmentError(msg_nat)
-
-
 class IntegTestVars:
     pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def fixt_emorep_setup(fixt_setup):
-    _check_test_env()
 
     # Make testing sourcedata dirs
     map_src_dst = {}
@@ -90,11 +71,9 @@ def fixt_emorep_setup(fixt_setup):
     supp_setup.dcm_path = os.path.dirname(map_src_dst["mri"][1])
 
     yield supp_setup
-    return  # TODO remove
-    shutil.rmtree(raw_path)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def fixt_emorep_mri(fixt_setup, fixt_emorep_setup):
     # Run emorep MRI methods
     proc_mri = emorep.ProcessMri(fixt_setup.subjid, fixt_emorep_setup.raw_path)
@@ -111,7 +90,7 @@ def fixt_emorep_mri(fixt_setup, fixt_emorep_setup):
     yield supp_mri
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def fixt_emorep_beh(fixt_setup, fixt_emorep_setup):
     # Run emorep behavior methods
     proc_beh = emorep.ProcessBeh(fixt_setup.subjid, fixt_emorep_setup.raw_path)
@@ -124,7 +103,7 @@ def fixt_emorep_beh(fixt_setup, fixt_emorep_setup):
     yield supp_beh
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def fixt_emorep_rest(fixt_setup, fixt_emorep_setup):
     # Run emorep rest behavior methods
     proc_rest = emorep.ProcessRate(
@@ -138,7 +117,7 @@ def fixt_emorep_rest(fixt_setup, fixt_emorep_setup):
     yield supp_rest
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def fixt_emorep_phys(fixt_setup, fixt_emorep_setup):
     # Run emorep rest behavior methods
     proc_phys = emorep.ProcessPhys(
@@ -154,7 +133,7 @@ def fixt_emorep_phys(fixt_setup, fixt_emorep_setup):
     yield supp_phys
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def fixt_wf_emorep(fixt_setup, fixt_emorep_setup):
     # Run entire build_rawdata for EmoRep
     build_emo = workflows.BuildEmoRep(
@@ -178,8 +157,10 @@ def fixt_wf_emorep(fixt_setup, fixt_emorep_setup):
     yield supp_wf
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def fixt_wf_nki():
+    setup_data.check_test_env()
+
     # Hardcode variables for known output
     age = 79
     dryrun = False
@@ -203,4 +184,3 @@ def fixt_wf_nki():
     )
     supp_nki.raw_path = os.path.join(proj_dir, "data_mri_BIDS", "rawdata")
     yield supp_nki
-    shutil.rmtree(os.path.dirname(supp_nki.raw_path))
