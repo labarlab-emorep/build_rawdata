@@ -2,6 +2,7 @@ import pytest
 import os
 import shutil
 import glob
+from typing import Iterator
 from build_rawdata.resources import behavior
 from build_rawdata.resources import process
 from build_rawdata.resources import bidsify
@@ -9,11 +10,13 @@ import setup_data
 
 
 class UnitTestVars:
+    """Allow each fixture to add respective attrs."""
+
     pass
 
 
 @pytest.fixture(scope="session", autouse=True)
-def fixt_setup():
+def fixt_setup() -> Iterator[UnitTestVars]:
     """Yield setup resources."""
     # Check for proper env
     setup_data.check_test_env()
@@ -54,11 +57,16 @@ def fixt_setup():
 def pytest_sessionfinish(session, exitstatus):
     """Teardown if all tests passed."""
     if 0 == exitstatus:
-        shutil.rmtree(setup_data.test_dir())
+
+        # Allow teardown from integ_wf_emorep
+        try:
+            shutil.rmtree(setup_data.test_dir())
+        except FileNotFoundError:
+            pass
 
 
 @pytest.fixture(scope="module")
-def fixt_behavior(fixt_setup):
+def fixt_behavior(fixt_setup) -> Iterator[UnitTestVars]:
     """Yield resources for testing behavior module."""
     obj_beh = UnitTestVars()
 
@@ -111,7 +119,7 @@ def fixt_behavior(fixt_setup):
 
 
 @pytest.fixture(scope="package")
-def fixt_dcm2nii(fixt_setup):
+def fixt_dcm2nii(fixt_setup) -> Iterator[UnitTestVars]:
     """Yield resources for testing dcm2niix."""
     obj_dcm2nii = UnitTestVars()
 
@@ -145,7 +153,7 @@ def fixt_dcm2nii(fixt_setup):
 
 
 @pytest.fixture(scope="module")
-def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
+def fixt_bids_nii(fixt_setup, fixt_dcm2nii) -> Iterator[UnitTestVars]:
     """Yield resources for testing BIDSifying of nii files."""
     obj_bids = UnitTestVars()
 
@@ -180,7 +188,7 @@ def fixt_bids_nii(fixt_setup, fixt_dcm2nii):
 
 
 @pytest.fixture(scope="function")
-def fixt_deface(fixt_setup):
+def fixt_deface(fixt_setup) -> Iterator[UnitTestVars]:
     """Yield resources for testing process.deface."""
     obj_deface = UnitTestVars()
 

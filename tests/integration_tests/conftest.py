@@ -1,6 +1,7 @@
 import pytest
 import os
 import sys
+from typing import Iterator
 import pandas as pd
 from build_rawdata.resources import emorep
 from build_rawdata import workflows
@@ -10,12 +11,14 @@ import setup_data  # noqa: E402
 
 
 class IntegTestVars:
+    """Allow each fixture to add respective attrs."""
+
     pass
 
 
 @pytest.fixture(scope="package")
-def fixt_emorep_setup(fixt_setup):
-
+def fixt_emorep_setup(fixt_setup) -> Iterator[IntegTestVars]:
+    """Yield setup resources for emorep methods."""
     # Make testing sourcedata dirs
     map_src_dst = {}
     map_name_data = {
@@ -74,7 +77,8 @@ def fixt_emorep_setup(fixt_setup):
 
 
 @pytest.fixture(scope="module")
-def fixt_emorep_mri(fixt_setup, fixt_emorep_setup):
+def fixt_emorep_mri(fixt_setup, fixt_emorep_setup) -> Iterator[IntegTestVars]:
+    """Yield resources for testing emorep MRI wf."""
     # Run emorep MRI methods
     proc_mri = emorep.ProcessMri(fixt_setup.subjid, fixt_emorep_setup.raw_path)
     cont_pipe, anat_list = proc_mri.bids_nii(fixt_emorep_setup.dcm_path)
@@ -91,7 +95,8 @@ def fixt_emorep_mri(fixt_setup, fixt_emorep_setup):
 
 
 @pytest.fixture(scope="function")
-def fixt_emorep_beh(fixt_setup, fixt_emorep_setup):
+def fixt_emorep_beh(fixt_setup, fixt_emorep_setup) -> Iterator[IntegTestVars]:
+    """Yield resources for testing emorep behavior wf."""
     # Run emorep behavior methods
     proc_beh = emorep.ProcessBeh(fixt_setup.subjid, fixt_emorep_setup.raw_path)
     tsv_path, json_path = proc_beh.make_events(fixt_emorep_setup.task_path)
@@ -104,7 +109,8 @@ def fixt_emorep_beh(fixt_setup, fixt_emorep_setup):
 
 
 @pytest.fixture(scope="function")
-def fixt_emorep_rest(fixt_setup, fixt_emorep_setup):
+def fixt_emorep_rest(fixt_setup, fixt_emorep_setup) -> Iterator[IntegTestVars]:
+    """Yield resources for testing emorep rest MRI wf."""
     # Run emorep rest behavior methods
     proc_rest = emorep.ProcessRate(
         fixt_setup.subjid, fixt_emorep_setup.raw_path
@@ -118,7 +124,8 @@ def fixt_emorep_rest(fixt_setup, fixt_emorep_setup):
 
 
 @pytest.fixture(scope="module")
-def fixt_emorep_phys(fixt_setup, fixt_emorep_setup):
+def fixt_emorep_phys(fixt_setup, fixt_emorep_setup) -> Iterator[IntegTestVars]:
+    """Yield resources for testing emorep physio wf."""
     # Run emorep rest behavior methods
     proc_phys = emorep.ProcessPhys(
         fixt_setup.subjid, fixt_emorep_setup.raw_path
@@ -134,7 +141,8 @@ def fixt_emorep_phys(fixt_setup, fixt_emorep_setup):
 
 
 @pytest.fixture(scope="function")
-def fixt_wf_emorep(fixt_setup, fixt_emorep_setup):
+def fixt_wf_emorep(fixt_setup, fixt_emorep_setup) -> Iterator[IntegTestVars]:
+    """Yield resources for testing emorep wf."""
     # Run entire build_rawdata for EmoRep
     build_emo = workflows.BuildEmoRep(
         os.path.join(fixt_setup.test_dir, "sourcedata"),
@@ -158,7 +166,8 @@ def fixt_wf_emorep(fixt_setup, fixt_emorep_setup):
 
 
 @pytest.fixture(scope="module")
-def fixt_wf_nki():
+def fixt_wf_nki() -> Iterator[IntegTestVars]:
+    """Yield resources for testing NKI wf."""
     setup_data.check_test_env()
 
     # Hardcode variables for known output
