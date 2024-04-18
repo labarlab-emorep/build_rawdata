@@ -60,6 +60,12 @@ def dcm2niix(subj_source, subj_raw, subid):
         [0] = list of paths to niis
         [1] = list of paths to jsons
 
+    Returns
+    -------
+    tuple
+        [0] = list of paths to niis
+        [1] = list of paths to jsons
+
     Notes
     -----
     Writes dcm2niix-named NIfTI files to subject's rawdata.
