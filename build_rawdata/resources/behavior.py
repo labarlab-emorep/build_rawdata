@@ -384,8 +384,9 @@ def rest_ratings(rate_path, subid, sess, out_file):
 
     Returns
     -------
-    pd.DataFrame
-        Cleaned participant responses
+    tuple
+        [0] = pd.DataFrame
+        [1] = Location of file
 
     """
     # Read-in data, get stimulus and response
@@ -415,4 +416,4 @@ def rest_ratings(rate_path, subid, sess, out_file):
     df_out = pd.DataFrame(out_dict)
     df_out = df_out.sort_values(by=["prompt"], ignore_index=True)
     df_out.to_csv(out_file, sep="\t", index=False, na_rep="NaN")
-    return df_out
+    return (df_out, out_file)

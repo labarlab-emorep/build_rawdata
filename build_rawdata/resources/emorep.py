@@ -43,9 +43,11 @@ class ProcessMri:
 
     Example
     -------
-    pm = ProcessMri("ER0009", "/path/to/rawdata")
-    pm.bids_nii("/path/to/ER0009/day2_movies/DICOM")
-    pm.deface_anat("/path/to/derivatives")
+    proc_mri = ProcessMri("ER0009", "/path/to/rawdata")
+    cont_pipe, anat_list = proc_mri.bids_nii(
+        "/path/to/ER0009/day2_movies/DICOM"
+    )
+    deface_path = proc_mri.deface_anat("/path/to/derivatives")
 
     """
 
@@ -133,7 +135,7 @@ class ProcessMri:
         if not os.path.exists(self._subj_raw):
             os.makedirs(self._subj_raw)
         nii_list, json_list = process.dcm2niix(
-            self._dcm_source, self._subj_raw, self._subid, self._sess
+            self._dcm_source, self._subj_raw, self._subid
         )
         return nii_list
 
@@ -161,6 +163,11 @@ class ProcessMri:
         deriv_dir : str, os.PathLike
             Location of derivatives directory
 
+        Returns
+        -------
+        list
+            Location of defaced output
+
         """
         if not hasattr(self, "_subj_raw") or not os.path.exists(
             os.path.join(self._subj_raw, "anat")
@@ -174,7 +181,7 @@ class ProcessMri:
             raise FileNotFoundError(
                 f"No T1w files detected in {self._subj_raw}/anat"
             )
-        _ = process.deface(t1_list, deriv_dir, self._subid, self._sess)
+        return process.deface(t1_list, deriv_dir, self._subid, self._sess)
 
 
 # %%
@@ -192,13 +199,15 @@ class ProcessBeh:
 
     Methods
     -------
-    make_events(task_path)
-        Generate events sidecar from task csv
+    make_events()
+        Generate events sidecars from task csv
 
     Example
     -------
-    pb = ProcessBeh("ER0009", "/path/to/rawdata")
-    pb.make_events("/path/to/sourcedata/ER0009/run01.csv")
+    proc_beh = ProcessBeh("ER0009", "/path/to/rawdata")
+    beh_tsv, beh_json = proc_beh.make_events(
+        "/path/to/sourcedata/ER0009/run01.csv"
+    )
 
     """
 
@@ -266,6 +275,12 @@ class ProcessBeh:
         task_path : str, os.PathLike
             Location of sourcedata task file
 
+        Returns
+        -------
+        tuple
+            [0] = Path to events.tsv
+            [1] = Path to events.json
+
         """
         self._task_path = task_path
         if not self._validate():
@@ -287,17 +302,19 @@ class ProcessBeh:
         subj_raw = os.path.join(self._raw_path, f"{self._subj}/{sess}/func")
         if not os.path.exists(subj_raw):
             os.makedirs(subj_raw)
-        out_file = os.path.join(
+        out_tsv = os.path.join(
             subj_raw, f"{self._subj}_{sess}_{task}_{run}_events.tsv"
         )
-        if not os.path.exists(out_file):
+        out_json = out_tsv.replace("tsv", "json")
+        if not os.path.exists(out_tsv):
             print(
                 "\t\tMaking behavior events.tsv for "
                 + f"{self._subj}, {sess} {run}"
             )
-            _, _ = behavior.events_tsv(
+            out_tsv, out_json = behavior.events_tsv(
                 task_path, subj_raw, self._subid, sess, task, run
             )
+        return (out_tsv, out_json)
 
 
 # %%
@@ -313,13 +330,15 @@ class ProcessRate:
 
     Methods
     -------
-    make_rate(rate_path)
+    make_rate()
         Organize post resting responses into rawdata beh
 
     Example
     -------
-    pr = ProcessRate("ER0009", "/path/to/rawdata")
-    pr.make_rate("/path/to/sourcedata/ER0009/rest.csv")
+    proc_rest = ProcessRate("ER0009", "/path/to/rawdata")
+    df, file_path = proc_rest.make_rate(
+        "/path/to/sourcedata/ER0009/rest.csv"
+    )
 
     """
 
@@ -363,13 +382,19 @@ class ProcessRate:
             return False
         return True
 
-    def make_rate(self, rate_path: Union[str, os.PathLike]):
+    def make_rate(self, rate_path):
         """Generate rest ratings beh files.
 
         Parameters
         ----------
         rate_path : str, os.PathLike
             Location of sourcedata rest ratings csv
+
+        Returns
+        -------
+        tuple
+            [0] = pd.DataFrame, None (output already existed)
+            [1] = Location of file
 
         """
         self._rate_path = rate_path
@@ -394,11 +419,11 @@ class ProcessRate:
             subj_raw, f"sub-{self._subid}_{sess}_rest-ratings_{date_str}.tsv"
         )
         if os.path.exists(out_file):
-            return
+            return (None, out_file)
 
         # Make rawdata file
         print("\t\tMaking rest ratings.tsv for " + f"{self._subj}, {sess} ...")
-        _ = behavior.rest_ratings(rate_path, self._subid, sess, out_file)
+        return behavior.rest_ratings(rate_path, self._subid, sess, out_file)
 
 
 # %%
@@ -417,13 +442,13 @@ class ProcessPhys:
 
     Methods
     -------
-    make_physio(phys_path)
+    make_physio()
         Copy acq and generate txt
 
     Example
     -------
-    pp = ProcessPhys("ER0009", "/path/to/rawdata", "/path/to/derivatives")
-    pb.make_physio("/path/to/sourcedata/ER0009/phys.acq")
+    proc_phys = ProcessPhys("ER0009", "/path/to/rawdata")
+    proc_phys.make_physio("/path/to/sourcedata/ER0009/phys.acq")
 
     """
 
@@ -476,6 +501,11 @@ class ProcessPhys:
         phys_path : str, os.PathLike
             Location of sourcedata physio file
 
+        Returns
+        -------
+        str, os.PathLike
+            Location of output physio file
+
         """
         self._phys_path = phys_path
         if not self._validate():
@@ -509,7 +539,7 @@ class ProcessPhys:
 
         # Generate tsv dataframe and copy data
         if os.path.exists(dest_acq):
-            return
+            return dest_acq
         print(
             "\t\tProcessing physio files for "
             + f"sub-{self._subid}, {sess} {run} {task}"
@@ -525,6 +555,7 @@ class ProcessPhys:
             )
             shutil.copy(phys_path, dest_orig)
             os.rename(dest_orig, dest_acq)
+            return dest_acq
         except:  # noqa: E722, nk throws the stupid struct.error
             "\t\t\tInsufficient data, continuing ..."
             return

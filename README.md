@@ -9,7 +9,7 @@ This package generates BIDS rawdata for Exp2_Compute_Emotion and Exp3_Classify_A
 ```
 (emorep)[nmm51-vm: ~]$build_rawdata
 
-Version : 2.3.1
+Version : 2.4.0
 
 The package build_rawdata consists of sub-packages that can be accessed
 from their respective entrypoints:
@@ -24,6 +24,9 @@ from their respective entrypoints:
 - AFNI
 - NeuroKit2
 
+
+## Testing
+Planned unit and integration tests are available at tests/run_tests.py, and executable via `$cd tests; python run_tests.py`.
 
 ## build_emorep
 Build BIDS rawdata directory for Exp2_Compute_Emotion using data collected by scanning for the EmoRep project.
