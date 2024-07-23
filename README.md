@@ -3,8 +3,8 @@ This package generates BIDS rawdata for Exp2_Compute_Emotion and Exp3_Classify_A
 
 
 ## Usage
-- Install into project conda environment (see [here](https://github.com/labarlab/conda_labarserv2)) via `$ python setup.py install --record record.txt`
-- Trigger package help and usage via entrypoint `$ build_rawdata`
+- Install into project conda environment (see [here](https://github.com/labarlab/conda_labarserv2)) via `$python setup.py install --record record.txt`
+- Trigger package help and usage via entrypoint `$build_rawdata`
 
 ```
 (emorep)[nmm51-vm: ~]$build_rawdata
@@ -19,7 +19,8 @@ from their respective entrypoints:
                         for Exp3_Classify_Archival
 ```
 
-## External Requirments
+## Requirments
+The following software suites are required to be installed and executable from the shell.
 - dcm2niix
 - AFNI
 - NeuroKit2
@@ -54,9 +55,9 @@ ER0009
     ├── Scanner_behav
     └── Scanner_physio
 ```
-The subdirectory of DICOM (e.g. 20220422.ER0009.ER00009) should contain all DICOMs for one session in a flat structure.
+The subdirectory of **DICOM** (e.g. 20220422.ER0009.ER00009) should contain all DICOMs for one session in a flat structure.
 
-`Scanner_behav` should contain all behavior files gathered from the EmoRep [task](https://github.com/labarlab-emorep/scanner_tasks) with the following organization and naming convention:
+**Scanner_behav** should contain all behavior files gathered from the EmoRep [task](https://github.com/labarlab-emorep/scanner_tasks) with the following organization and naming convention:
 
 ```bash
 Scanner_behav/
@@ -70,7 +71,7 @@ Scanner_behav/
 
 __Note:__ the file name of the CSV was changed partway through the study to have better agreement with the MAT file, e.g. `emorep_scannermovieData_sub-ER0697_ses-day2_run-1_09012023.csv`, both formats are acceptable.
 
-`Scanner_physio` should contain all physio files gathered during the same EmoRep task with the following organization and naming convention:
+**Scanner_physio** should contain all physio files gathered during the same EmoRep task with the following organization and naming convention:
 
 ```bash
 Scanner_physio/
@@ -122,26 +123,62 @@ optional arguments:
                         e.g. "--sub-list ER4414" or "--sub-list ER4414 ER4415 ER4416".
 ```
 
-It is possible to build `rawdata` for all subjects via the `--sub-all` option, or by specifying 1+ subjects via the `--sub-list` option. Using the boolean `--deface` option triggers defacing of the session anatomical file. Finally `--proj-dir` is used to specify the parent directory, containing `sourcedata` and where `rawdata` and `derivatives` will be constructed.
+It is possible to build rawdata for all subjects via the `--sub-all` option, or by specifying 1+ subjects via the `--sub-list` option. Using the boolean `--deface` option triggers defacing of the session anatomical file. Finally `--proj-dir` is used to specify the parent directory, containing sourcedata and where rawdata and derivatives will be constructed.
 
 
 ### Functionality
-`build_emorep` conducts a series of workflows to generate BIDS-compliant `rawdata` directory using data from `sourcedata`. The steps are:
+`build_emorep` conducts a series of workflows to generate BIDS-compliant rawdata and defaced derivates using data from sourcedata. The steps are:
 
-1. Setup `rawdata` and `derivatives`
+1. Setup rawdata and derivatives
 1. Organize DICOMs
-1. Convert DICOMs to NIfTI files via `dcm2niix`
+1. Convert DICOMs to NIfTI files via dcm2niix
 1. BIDS-organize rawdata NIfTI files
-    1. (optional) Deface anatomical NIfTI via `@afni_refacer_run` and write to `derivatives/deface`
-1. Generate BIDS events TSV files from `Scanner_behav` and organize in `func`
-1. Clean rest rating responses (from `Scanner_behav`) and organize in `beh`
-1. Copy `Scanner_phys` ACQ files to `phys` and also generate TXT format via `NeuroKit2` for autonomate.
+    1. (optional) Deface anatomical NIfTI via `@afni_refacer_run` and write to derivatives/deface
+1. Generate BIDS events TSV files from Scanner_behav and organize in func
+1. Clean rest rating responses (from Scanner_behav) and organize in beh
+1. Copy Scanner_phys ACQ files to phys and also generate TXT format via `NeuroKit2` for autonomate.
+
+Output written to rawdata are organized following the BIDS scheme:
+
+```
+rawdata/
+└── sub-ER0009
+    └── ses-day3
+       ├── anat
+       │   ├── sub-ER0009_ses-day3_T1w.json
+       │   └── sub-ER0009_ses-day3_T1w.nii.gz
+       ├── beh
+       │   └── sub-ER0009_ses-day3_rest-ratings_2022-04-28.tsv
+       ├── fmap
+       │   ├── sub-ER0009_ses-day3_acq-rpe_dir-PA_epi.json
+       │   └── sub-ER0009_ses-day3_acq-rpe_dir-PA_epi.nii.gz
+       ├── func
+       │   ├── sub-ER0009_ses-day3_task-movies_run-01_bold.json
+       │   ├── sub-ER0009_ses-day3_task-movies_run-01_bold.nii.gz
+       │   ├── sub-ER0009_ses-day3_task-movies_run-01_events.json
+       │   └── sub-ER0009_ses-day3_task-movies_run-01_events.tsv
+       └── phys
+           ├── sub-ER0009_ses-day3_task-movies_run-01_recording-biopack_physio.acq
+           └── sub-ER0009_ses-day3_task-movies_run-01_recording-biopack_physio.txt
+```
+Note that participant responses to the rest-rating task are saved to the 'beh' directory (and excluded from validation), and both ACQ and TXT formats are available for physio data.
+
+Conversely, organization of the defaced derivatives does not fully comply to the BIDS scheme:
+
+```
+derivatives/deface/
+└── sub-ER0009
+    ├── ses-day2
+    │   └── sub-ER0009_ses-day2_T1w_defaced.nii.gz
+    └── ses-day3
+        └── sub-ER0009_ses-day3_T1w_defaced.nii.gz
+```
 
 Also, see [Diagrams](#diagrams).
 
 
 ### Considerations
-- `fmap` JSON files are updated with the `IntendedFor` field. If multiple `fmap` files are found then the default is to use fmap1 for EPI runs 1-4 and fmap2 for runs 5-8 + rest. If this is not appropriate then the researcher can specify the exact mapping in `build_rawdata.reference_files.unique_fmap.json`.
+- fmap JSON files are updated with the `IntendedFor` field. If multiple fmap files are found then the default is to use fmap1 for EPI runs 1-4 and fmap2 for runs 5-8 + rest. If this is not appropriate then the researcher can specify the exact mapping in `build_rawdata.reference_files.unique_fmap.json`.
 
 
 ## build_nki
@@ -162,6 +199,7 @@ nki_resources/
 └── download_rockland_raw_bids_ver2.py
 ```
 
+This directory can be found at `experiments2/EmoRep/Exp3_Classify_Archival/code/nki_resources`.
 
 ### Usage
 Trigger this sub-package via the CLI `build_nki`, which also supplies a help when executed without specified options:
@@ -230,6 +268,21 @@ Current usage involves using the default options via the first example, and addi
 1. Remove accompanying physio files
 1. Shorten IDs
 1. Finalize BIDS organization
+
+Output are written to the archival project rawdata directory:
+
+```
+rawdata/
+└── sub-08326
+    └── ses-BAS1
+        ├── anat
+        │   ├── sub-08326_ses-BAS1_T1w.json
+        │   └── sub-08326_ses-BAS1_T1w.nii.gz
+        └── func
+            ├── sub-08326_ses-BAS1_task-rest_run-01_acq-1400_bold.json
+            ├── sub-08326_ses-BAS1_task-rest_run-01_acq-1400_bold.nii.gz
+            └── sub-08326_ses-BAS1_task-rest_run-01_acq-1400_events.tsv
+```
 
 Also, see [Diagrams](#diagrams).
 
