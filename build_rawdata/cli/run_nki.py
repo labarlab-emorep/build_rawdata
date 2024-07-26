@@ -23,6 +23,7 @@ build_nki -t anat func --protocol REST645 --session BAS3 --dryrun
 import os
 import sys
 import textwrap
+import platform
 from argparse import ArgumentParser, RawTextHelpFormatter
 from build_rawdata import workflows
 import build_rawdata._version as ver
@@ -125,6 +126,12 @@ def get_args():
 # %%
 def main():
     """Coordinate module resources."""
+    # Check env
+    if "labarserv2" not in platform.uname().node:
+        print("build_rawdata is required to run on labarserv2.")
+        sys.exit(1)
+
+    # Get args
     args = get_args().parse_args()
     age = args.age
     dryrun = args.dryrun

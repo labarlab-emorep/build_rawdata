@@ -1,9 +1,16 @@
 # build_rawdata
-This package generates BIDS rawdata for Exp2_Compute_Emotion and Exp3_Classify_Archival via the sub-packages [build_emorep](#build_emorep) and [build_nki](#build_nki), respectively.
+This package generates BIDS rawdata for Exp2_Compute_Emotion and Exp3_Classify_Archival via the sub-packages [build_emorep](#build_emorep) and [build_nki](#build_nki), respectively. It is written for execution on labarserv2.
 
 
-## Usage
-- Install into project conda environment (see [here](https://github.com/labarlab/conda_labarserv2)) via `$python setup.py install --record record.txt`
+## Requirements
+The following software suites are required to be installed and executable from the shell.
+- [dcm2niix](https://github.com/rordenlab/dcm2niix)
+- [AFNI](https://afni.nimh.nih.gov/)
+- [NeuroKit2](https://github.com/neuropsychology/NeuroKit)
+
+
+## Setup and Entrypoint
+- Install into project conda environment on labarserv2 (see [here](https://github.com/labarlab/conda_labarserv2)) via `$python setup.py install --record record.txt`
 - Trigger package help and usage via entrypoint `$build_rawdata`
 
 ```
@@ -19,28 +26,17 @@ from their respective entrypoints:
                         for Exp3_Classify_Archival
 ```
 
-## Requirments
-The following software suites are required to be installed and executable from the shell.
-- dcm2niix
-- AFNI
-- NeuroKit2
-
 
 ## Testing
 Planned unit and integration tests are available at tests/run_tests.py, and executable via `$cd tests; python run_tests.py`.
 
-## build_emorep
-Build BIDS rawdata directory for Exp2_Compute_Emotion using data collected by scanning for the EmoRep project.
 
-Contents:
-- [Setup](#setup)
-- [Usage](#usage-1)
-- [Functionality](#functionality)
-- [Considerations](#considerations)
+## build_emorep
+Build BIDS rawdata directory for Exp2_Compute_Emotion using data collected by scanning for the EmoRep project. Orients to, validates, and organizes sourcedata, then builds BIDS-complaint rawdata for each subject and session. Also coordiantes defacing of T1w files for NDAR hosting.
 
 
 ### Setup
-`build_emorep` assumes the in-house `sourcedata` organization for EmoRep:
+`build_emorep` assumes the in-house sourcedata organization for EmoRep:
 
 ```bash
 ER0009
@@ -55,6 +51,8 @@ ER0009
     ├── Scanner_behav
     └── Scanner_physio
 ```
+Failure to organize data in this structure, and those below, will not pass validation and result in (a) printed error messages to stdout and (b) skipping rawdata conversion for the offending data.
+
 The subdirectory of **DICOM** (e.g. 20220422.ER0009.ER00009) should contain all DICOMs for one session in a flat structure.
 
 **Scanner_behav** should contain all behavior files gathered from the EmoRep [task](https://github.com/labarlab-emorep/scanner_tasks) with the following organization and naming convention:
@@ -82,16 +80,17 @@ Scanner_physio/
 
 
 ### Usage
-Trigger this sub-package via the CLI `build_emorep`, which also supplies a help when executed without specified options:
+Trigger this sub-package via the CLI `$build_emorep`, which also supplies a help and description of arguments:
 
 ```
 (emorep)[nmm51-vm: ~]$build_emorep
-usage: build_emorep [-h] [--deface] [--proj-dir PROJ_DIR] [--sub-all]
-                    [--sub-list SUB_LIST [SUB_LIST ...]]
+usage: build_emorep [-h] [--deface] [--proj-dir PROJ_DIR] [--sub-all] [--sub-list SUB_LIST [SUB_LIST ...]]
 
-Version : 2.3.1
+Version : 2.4.0
 
 Build BIDS rawdata for EmoRep experiment.
+
+Written for for use on labarserv2.
 
 Referencing data collected at the scanner, build a BIDS-organized
 rawdata with NIfTIs, behavioral events, resting-state task response,
@@ -102,25 +101,19 @@ Requires in-house EmoRep sourcedata organization.
 
 Examples
 --------
-build_emorep --sub-all --deface
+build_emorep --deface --sub-all
+build_emorep --deface --sub-list ER0009 ER0016
 
-build_emorep \
-    --sub-list ER0009 ER0016 \
-    --proj-dir /path/to/project/bids \
-    --deface
-
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  --deface              Whether to deface via pydeface,
-                        True if "--deface" else False.
+  --deface              Deface anat files via @afni_refacer_run
   --proj-dir PROJ_DIR   Path to BIDS organized parent directory, containing sourcedata
                         and rawdata.
                         (default : /mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS)
-  --sub-all             Whether to process all participant data in <proj_dir>/sourcedata,
-                        True if "--sub-all" else False.
+  --sub-all             Build rawdata for all participants in sourcedata
   --sub-list SUB_LIST [SUB_LIST ...]
-                        List of subject IDs to submit for pre-processing,
-                        e.g. "--sub-list ER4414" or "--sub-list ER4414 ER4415 ER4416".
+                        Subject IDs
+
 ```
 
 It is possible to build rawdata for all subjects via the `--sub-all` option, or by specifying 1+ subjects via the `--sub-list` option. Using the boolean `--deface` option triggers defacing of the session anatomical file. Finally `--proj-dir` is used to specify the parent directory, containing sourcedata and where rawdata and derivatives will be constructed.
@@ -130,7 +123,7 @@ It is possible to build rawdata for all subjects via the `--sub-all` option, or 
 `build_emorep` conducts a series of workflows to generate BIDS-compliant rawdata and defaced derivates using data from sourcedata. The steps are:
 
 1. Setup rawdata and derivatives
-1. Organize DICOMs
+1. Organize sourcedata DICOMs
 1. Convert DICOMs to NIfTI files via dcm2niix
 1. BIDS-organize rawdata NIfTI files
     1. (optional) Deface anatomical NIfTI via `@afni_refacer_run` and write to derivatives/deface
@@ -184,11 +177,6 @@ Also, see [Diagrams](#diagrams).
 ## build_nki
 Build BIDS rawdata for Exp3_Classify_Archival (archival). This will download archival data from the [Nathan Kline Institute](http://fcon_1000.projects.nitrc.org/indi/enhanced/index.html) archival dataset and BIDS-organize certain files for resting-state analyses.
 
-Contents:
-- [Setup](#setup-1)
-- [Usage](#usage-2)
-- [Functionality](#functionality-1)
-
 
 ### Setup
 `build_nki` requires resources detailed [here](http://fcon_1000.projects.nitrc.org/indi/enhanced/neurodata.html), organized according to the following structure and naming scheme:
@@ -199,17 +187,19 @@ nki_resources/
 └── download_rockland_raw_bids_ver2.py
 ```
 
-This directory can be found at `experiments2/EmoRep/Exp3_Classify_Archival/code/nki_resources`.
+This nki_resources directory can be found at experiments2/EmoRep/Exp3_Classify_Archival/code/nki_resources.
+
 
 ### Usage
-Trigger this sub-package via the CLI `build_nki`, which also supplies a help when executed without specified options:
+Trigger help and usage of this sub-package via the CLI `$build_nki`:
 
 ```
 (emorep)[nmm51-vm: nki_resources]$build_nki
-usage: build_nki [-h] [--age AGE] [--dryrun] [--hand HAND] [--nki-dir NKI_DIR] [--proj-dir PROJ_DIR] [--protocol PROTOCOL] [--session SESSION] -t
-                 SCAN_TYPE [SCAN_TYPE ...]
+usage: build_nki [-h] [--age AGE] [--dryrun] [--hand {L,R}] [--nki-dir NKI_DIR] [--proj-dir PROJ_DIR]
+                 [--protocol {REST645,REST1400,RESTCAP,RESTPCASL}] [--session {BAS1,BAS2,BAS3}] -t {anat,func,dwi}
+                 [{anat,func,dwi} ...]
 
-Version : 2.3.1
+Version : 2.4.0
 
 Download NKI Rockland Archival Data.
 
@@ -230,37 +220,34 @@ build_nki -t anat func --hand R --dryrun
 build_nki -t anat func --age 80 --dryrun
 build_nki -t anat func --protocol REST645 --session BAS3 --dryrun
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --age AGE             Threshold age, will pull data for participants
                         of older (>) than specified age.
                         (default : 17)
   --dryrun              Test download parameters
-  --hand HAND           ["L", "R"]
-                        Handedness of participants, unspecified pulls both
+  --hand {L,R}          Handedness of participants, unspecified pulls both
   --nki-dir NKI_DIR     Path to parent directory containing download script and AWS links
                         (default : /mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival/code/nki_resources)
   --proj-dir PROJ_DIR   Path to parent directory of archival study
                         (default : /mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival)
-  --protocol PROTOCOL   ["REST645", "REST1400", "RESTCAP", "RESTPCASL"]
+  --protocol {REST645,REST1400,RESTCAP,RESTPCASL}
                         Resting protocol name
                         (default : REST1400)
-  --session SESSION     ["BAS1", "BAS2", "BAS3"]
+  --session {BAS1,BAS2,BAS3}
                         Session, Visit name
                         (default : BAS1)
 
 Required Arguments:
-  -t SCAN_TYPE [SCAN_TYPE ...], --scan-type SCAN_TYPE [SCAN_TYPE ...]
-                        ["anat", "func", "dwi"]
+  -t {anat,func,dwi} [{anat,func,dwi} ...], --scan-type {anat,func,dwi} [{anat,func,dwi} ...]
                         Scan type(s) to download
 
-```
 
-Current usage involves using the default options via the first example, and additional options are available for increased usability.
+```
+Current usage for the EmoRep Archival project involves using the default options via the first example, and additional options are available for increased usability.
 
 
 ### Functionality
-
 `build_nki` conducts a single workflow that downloads and then BIDS-organizes the NKI archival data. Data for 1000 subjects will be downloaded with default options. The steps are:
 
 1. Download data
