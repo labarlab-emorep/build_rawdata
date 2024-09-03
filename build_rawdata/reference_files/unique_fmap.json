@@ -43,7 +43,7 @@
                 "movies_06",
                 "movies_07"
             ],
-            "fmap2": [                
+            "fmap2": [
                 "movies_08",
                 "rest_01"
             ]
@@ -57,9 +57,9 @@
                 "movies_03",
                 "movies_04",
                 "movies_05",
-                "movies_06"                
+                "movies_06"
             ],
-            "fmap2": [                
+            "fmap2": [
                 "movies_07",
                 "movies_08",
                 "rest_01"
@@ -71,9 +71,9 @@
             "fmap1": [
                 "scenarios_01",
                 "scenarios_02",
-                "scenarios_03"                
+                "scenarios_03"
             ],
-            "fmap2": [                
+            "fmap2": [
                 "scenarios_04",
                 "scenarios_05",
                 "scenarios_06",
@@ -107,9 +107,26 @@
                 "scenarios_02",
                 "scenarios_03",
                 "scenarios_04",
-                "scenarios_05"               
+                "scenarios_05"
             ],
             "fmap2": [
+                "scenarios_06",
+                "scenarios_07",
+                "scenarios_08",
+                "rest_01"
+            ]
+        }
+    },
+    "ER1253": {
+        "ses-day3": {
+            "fmap1": [
+                "scenarios_01"
+            ],
+            "fmap2": [
+                "scenarios_02",
+                "scenarios_03",
+                "scenarios_04",
+                "scenarios_05",
                 "scenarios_06",
                 "scenarios_07",
                 "scenarios_08",
