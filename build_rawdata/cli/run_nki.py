@@ -60,7 +60,7 @@ def get_args():
     )
     parser.add_argument(
         "--nki-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival/code/nki_resources",  # noqa: E501
+        default=f"{os.environ["NKI_DIR"]}/code/nki_resources",
         help=textwrap.dedent(
             """\
             Path to parent directory containing download script and AWS links
@@ -71,7 +71,7 @@ def get_args():
     )
     parser.add_argument(
         "--proj-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival",
+        default=os.environ["NKI_DIR"],
         help=textwrap.dedent(
             """\
             Path to parent directory of archival study
@@ -127,8 +127,8 @@ def get_args():
 def main():
     """Coordinate module resources."""
     # Check env
-    if "labarserv2" not in platform.uname().node:
-        print("build_rawdata is required to run on labarserv2.")
+    if os.environ["SERVER_NAME"] not in platform.uname().node:
+        print("build_rawdata is required to run on the lab server.")
         sys.exit(1)
 
     # Get args

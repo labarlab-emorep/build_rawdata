@@ -1,7 +1,7 @@
 """Conduct user-requested unit and integration tests.
 
 Tests are conducted in
-/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/code/unit_test/build_rawdata
+os.environ["SERVER_PROJ_DIR"]/code/unit_test/build_rawdata
 which is removed if all requested tests pass.
 
 Examples

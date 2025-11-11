@@ -175,11 +175,11 @@ def fixt_wf_nki() -> Iterator[IntegTestVars]:
     dryrun = False
     hand = "L"
     nki_dir = (
-        "/mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival"
+        os.environ["NKI_DIR"]
         + "/code/nki_resources"
     )
     proj_dir = (
-        "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
+        os.environ["SERVER_PROJ_DIR"]
         + "/code/unit_test/build_rawdata"
     )
     prot = "REST645"

@@ -18,7 +18,7 @@ from typing import Union
 
 def par_dir() -> Union[str, os.PathLike]:
     """Return path to project directory."""
-    return "/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion"
+    return os.environ["SERVER_PROJ_DIR"]
 
 
 def test_dir() -> Union[str, os.PathLike]:
@@ -28,9 +28,9 @@ def test_dir() -> Union[str, os.PathLike]:
 
 def check_test_env():
     """Raise EnvironmentError for improper testing envs."""
-    # Check for labarserv2
-    if "ccn-labarserv2" not in platform.uname().node:
-        raise EnvironmentError("Please execute pytest on labarserv2")
+    # Check for the lab server
+    if os.environ["SERVER_NAME"] not in platform.uname().node:
+        raise EnvironmentError("Please execute pytest on the lab server")
 
     # Check for Nature env
     msg_nat = "Please execute pytest in emorep conda env"

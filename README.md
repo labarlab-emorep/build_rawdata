@@ -1,5 +1,5 @@
 # build_rawdata
-This package generates BIDS rawdata for Exp2_Compute_Emotion and Exp3_Classify_Archival via the sub-packages [build_emorep](#build_emorep) and [build_nki](#build_nki), respectively. It is written for execution on labarserv2.
+This package generates BIDS rawdata for Exp2_Compute_Emotion and Exp3_Classify_Archival via the sub-packages [build_emorep](#build_emorep) and [build_nki](#build_nki), respectively. It is written for execution on the lab server.
 
 
 ## Requirements
@@ -10,7 +10,7 @@ The following software suites are required to be installed and executable from t
 
 
 ## Setup and Entrypoint
-- Install into project conda environment on labarserv2 (see [here](https://github.com/labarlab/conda_labarserv2)) via `$python setup.py install --record record.txt`
+- Install into project conda environment on the lab server via `$python setup.py install --record record.txt`
 - Trigger package help and usage via entrypoint `$build_rawdata`
 
 ```
@@ -90,7 +90,7 @@ Version : 2.4.0
 
 Build BIDS rawdata for EmoRep experiment.
 
-Written for for use on labarserv2.
+Written for for use on the lab server.
 
 Referencing data collected at the scanner, build a BIDS-organized
 rawdata with NIfTIs, behavioral events, resting-state task response,
@@ -109,7 +109,7 @@ options:
   --deface              Deface anat files via @afni_refacer_run
   --proj-dir PROJ_DIR   Path to BIDS organized parent directory, containing sourcedata
                         and rawdata.
-                        (default : /mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS)
+                        (default : os.environ["SERVER_BIDS_DIR"])
   --sub-all             Build rawdata for all participants in sourcedata
   --sub-list SUB_LIST [SUB_LIST ...]
                         Subject IDs
@@ -228,9 +228,9 @@ options:
   --dryrun              Test download parameters
   --hand {L,R}          Handedness of participants, unspecified pulls both
   --nki-dir NKI_DIR     Path to parent directory containing download script and AWS links
-                        (default : /mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival/code/nki_resources)
+                        (default : f"{os.environ["NKI_DIR"]}/code/nki_resources")
   --proj-dir PROJ_DIR   Path to parent directory of archival study
-                        (default : /mnt/keoki/experiments2/EmoRep/Exp3_Classify_Archival)
+                        (default : os.environ["NKI_DIR"])
   --protocol {REST645,REST1400,RESTCAP,RESTPCASL}
                         Resting protocol name
                         (default : REST1400)

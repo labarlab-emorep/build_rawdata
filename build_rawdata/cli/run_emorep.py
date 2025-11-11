@@ -1,6 +1,6 @@
 r"""Build BIDS rawdata for EmoRep experiment.
 
-Written for for use on labarserv2.
+Written for for use on the lab server.
 
 Referencing data collected at the scanner, build a BIDS-organized
 rawdata with NIfTIs, behavioral events, resting-state task response,
@@ -42,7 +42,7 @@ def get_args():
     ),
     parser.add_argument(
         "--proj-dir",
-        default="/mnt/keoki/experiments2/EmoRep/Exp2_Compute_Emotion/data_scanner_BIDS",  # noqa: E501
+        default=os.environ["SERVER_BIDS_DIR"],
         help=textwrap.dedent(
             """\
             Path to BIDS organized parent directory, containing sourcedata
@@ -75,8 +75,8 @@ def get_args():
 def main():
     """Coordinate module resources."""
     # Check env
-    if "labarserv2" not in platform.uname().node:
-        print("build_rawdata is required to run on labarserv2.")
+    if os.environ["SERVER_NAME"] not in platform.uname().node:
+        print("build_rawdata is required to run on the lab server.")
         sys.exit(1)
 
     # Get args
