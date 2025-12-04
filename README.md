@@ -14,7 +14,7 @@ The following software suites are required to be installed and executable from t
 - Trigger package help and usage via entrypoint `$build_rawdata`
 
 ```
-(emorep)[nmm51-vm: ~]$build_rawdata
+(emorep)[user-vm: ~]$build_rawdata
 
 Version : 2.4.0
 
@@ -83,7 +83,7 @@ Scanner_physio/
 Trigger this sub-package via the CLI `$build_emorep`, which also supplies a help and description of arguments:
 
 ```
-(emorep)[nmm51-vm: ~]$build_emorep
+(emorep)[user-vm: ~]$build_emorep
 usage: build_emorep [-h] [--deface] [--proj-dir PROJ_DIR] [--sub-all] [--sub-list SUB_LIST [SUB_LIST ...]]
 
 Version : 2.4.0
@@ -194,7 +194,7 @@ This nki_resources directory can be found at experiments2/EmoRep/Exp3_Classify_A
 Trigger help and usage of this sub-package via the CLI `$build_nki`:
 
 ```
-(emorep)[nmm51-vm: nki_resources]$build_nki
+(emorep)[user-vm: nki_resources]$build_nki
 usage: build_nki [-h] [--age AGE] [--dryrun] [--hand {L,R}] [--nki-dir NKI_DIR] [--proj-dir PROJ_DIR]
                  [--protocol {REST645,REST1400,RESTCAP,RESTPCASL}] [--session {BAS1,BAS2,BAS3}] -t {anat,func,dwi}
                  [{anat,func,dwi} ...]
